@@ -47,5 +47,13 @@ protected:
 	// Box of the barrier that implements collision
 	UPROPERTY( EditDefaultsOnly, Category = "Appearance" )
 	class UBoxComponent* CollisionBox;
+#if WITH_EDITORONLY_DATA
+private:
+	UPROPERTY()
+	TObjectPtr<class UArrowComponent> ArrowComponent;
+public:
+	/** Returns ArrowComponent subobject **/
+	TObjectPtr<class UArrowComponent> GetArrowComponent() const;
+#endif
 	// ~ Misc
 };

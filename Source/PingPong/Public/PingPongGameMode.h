@@ -8,7 +8,7 @@
 
 #include "PingPongGameMode.generated.h"
 
-DECLARE_LOG_CATEGORY_EXTERN( LogPingPongGameMod, Log, All );
+DECLARE_LOG_CATEGORY_EXTERN( LogPingPongGameMode, Log, All );
 
 /**
  * GameMode for Ping Pong game
@@ -25,6 +25,22 @@ private:
 	// Init Game
 	virtual void BeginPlay() override;
 	// ~ Inits
+
+	// ~ Countdown Timer
+public:
+	// Start Countdown timer from start
+	UFUNCTION( BlueprintCallable, Category = "Countdown Timer" )
+	void StartOverCountdownTimer(const bool& NeedToStartGameOnTimerEnd = true);
+protected:
+	// Create timer in viewport
+	UFUNCTION( BlueprintCallable, Category = "Countdown Timer" )
+	void CreateCountdownTimer( const bool& NeedToStartGameOnTimerEnd = true );
+	// Delete timer from viewport if not deleted yet
+	UFUNCTION( BlueprintCallable, Category = "Countdown Timer" )
+	void DeleteTimer();
+	// Timer used for countdown and start game
+	struct FTimerHandle StartCountdownTimer;
+	// ~ Countdown Timer
 
 	// ~ Variables
 public:
@@ -56,8 +72,6 @@ protected:
 	// How many seconds wait before game starts
 	UPROPERTY( EditDefaultsOnly, Category = "Start" )
 	float StartCountdownDuration = 3;
-	// Timer used for countdown and start game
-	struct FTimerHandle StartCountdownTimer;
 	// ~ Variables
 
 	// ~ Status
@@ -74,6 +88,9 @@ public:
 	// Swaps current pause state if playing or paused
 	UFUNCTION( BlueprintCallable, Category = "Status" )
 	void SwapPause();
+	// Restarts current round
+	UFUNCTION( BlueprintCallable, Category = "Status" )
+	void RestartRound();
 	// Add score to player
 	UFUNCTION( BlueprintCallable, Category = "Status" )
 	void AddPlayerScore( const int& ScoreToAdd = 1 );
@@ -94,6 +111,12 @@ protected:
 
 	// ~ Find functions
 public:
+	// Finds start Transform in level that has type StartType and 
+	// Takes in argument pawn that need to be fit in start position
+	template<typename StartType>
+	TOptional<FTransform> FindStartTransform( TSubclassOf<AActor> ActorClassToFit ) const;
+	// Finds player start Transform
+	TOptional<FTransform> FindPlayerStartTransform() const;
 	// Finds enemy start Transform
 	TOptional<FTransform> FindEnemyStartTransform() const;
 	// Finds ball start Transform

@@ -6,6 +6,7 @@
 #include "PingPongGameMode.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/SphereComponent.h"
+#include "Components/ArrowComponent.h"
 
 DEFINE_LOG_CATEGORY( LogPingPongBall );
 
@@ -17,7 +18,21 @@ ABall::ABall() : Super()
 	Sphere = CreateDefaultSubobject<UStaticMeshComponent>( TEXT( "Sphere" ) );
 	Sphere->AttachToComponent( GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform );
 	Sphere->OnComponentBeginOverlap.AddDynamic( this, &ABall::OnBoxBeginOverlap );
+#if WITH_EDITORONLY_DATA
+	ArrowComponent = CreateEditorOnlyDefaultSubobject<UArrowComponent>( TEXT( "Arrow" ) );
 
+	if ( !IsRunningCommandlet() && ArrowComponent )
+	{
+		ArrowComponent->ArrowColor = FColor( 150, 200, 255 );
+
+		ArrowComponent->ArrowSize = 1.0f;
+		ArrowComponent->bTreatAsASprite = true;
+		ArrowComponent->SetupAttachment( GetRootComponent() );
+		ArrowComponent->bIsScreenSizeScaled = true;
+	}
+
+	bIsSpatiallyLoaded = false;
+#endif // WITH_EDITORONLY_DATA
 }
 
 void ABall::BeginPlay()
@@ -26,6 +41,11 @@ void ABall::BeginPlay()
 
 	Direction = { float( FMath::RandBool() ? 1 : -1 ), FMath::RandRange( 1.0f, -1.0f ) };
 
+}
+
+void ABall::ResetDirection()
+{
+	Direction = { float( FMath::RandBool() ? 1 : -1 ), FMath::RandRange( 1.0f, -1.0f ) };
 }
 
 void ABall::Tick( float DeltaTime )
@@ -64,8 +84,6 @@ void ABall::OnBoxBeginOverlap( UPrimitiveComponent* OverlappedComp, AActor* Othe
 	else if ( OtherActor->ActorHasTag( FName( TEXT( "PlayerGate" ) ) ) ) // Hitted with gate
 	{
 		if ( APingPongGameMode* GameMode = Cast<APingPongGameMode>( UGameplayStatics::GetGameMode( GetWorld() ) ) ) {
-	UE_LOG( LogTemp, Error, TEXT( "CALLED:" ) );
-		
 			GameMode->AddEnemyScore();
 		}
 	}
@@ -76,3 +94,9 @@ void ABall::OnBoxBeginOverlap( UPrimitiveComponent* OverlappedComp, AActor* Othe
 	}
 }
 
+#if WITH_EDITORONLY_DATA
+TObjectPtr<UArrowComponent> ABall::GetArrowComponent() const
+{
+	return ArrowComponent;
+}
+#endif // WITH_EDITORONLY_DATA

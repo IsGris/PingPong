@@ -22,9 +22,6 @@ private:
 	UPROPERTY()
 	TObjectPtr<class UArrowComponent> ArrowComponent;
 public:
-#endif
-
-#if WITH_EDITORONLY_DATA
 	/** Returns ArrowComponent subobject **/
 	TObjectPtr<class UArrowComponent> GetArrowComponent() const;
 #endif
