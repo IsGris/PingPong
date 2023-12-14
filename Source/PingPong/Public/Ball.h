@@ -28,6 +28,9 @@ protected:
 
 	// ~ Movement
 public:
+	// Reset direction to random for ball
+	UFUNCTION( BlueprintCallable, Category = "Movement" )
+	void ResetDirection();
 	// Does ball can move
 	UPROPERTY( BlueprintReadWrite, Category = "Movement" )
 	bool CanMove = false;
@@ -55,5 +58,13 @@ protected:
 	// Sphere of ball that implements collision
 	UPROPERTY( EditDefaultsOnly, Category = "Sphere" )
 	class USphereComponent* CollisionSphere;
+#if WITH_EDITORONLY_DATA
+private:
+	UPROPERTY()
+	TObjectPtr<class UArrowComponent> ArrowComponent;
+public:
+	/** Returns ArrowComponent subobject **/
+	TObjectPtr<class UArrowComponent> GetArrowComponent() const;
+#endif
 	// ~ Misc
 };

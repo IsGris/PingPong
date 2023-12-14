@@ -10,11 +10,13 @@
 #include "PlayerBarrier.h"
 #include "PingPongGameState.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerStart.h"
 #include "EnemyStart.h"
 #include "BallStart.h"
 #include "EngineUtils.h"
+#include "ScoreScreen.h"
 
-DEFINE_LOG_CATEGORY( LogPingPongGameMod );
+DEFINE_LOG_CATEGORY( LogPingPongGameMode );
 
 APingPongGameMode::APingPongGameMode() : Super()
 {
@@ -34,11 +36,15 @@ void APingPongGameMode::BeginPlay()
 	TempTransform = FindEnemyStartTransform();
 	if ( TempTransform.IsSet() )
 		SpawnEnemy( TempTransform.GetValue() );
+	else
+		UE_LOG( LogPingPongGameMode, Warning, TEXT( "EnemyStart transform not finded cannot reset round" ) );
 	
 	TempTransform.Reset();
 	TempTransform = FindBallStartTransform();
 	if ( TempTransform.IsSet() )
 		SpawnBall( TempTransform.GetValue() );
+	else
+		UE_LOG( LogPingPongGameMode, Warning, TEXT( "BallStart transform not finded cannot reset round" ) );
 
 	// Init variables
 	Player = FindPlayer();
@@ -59,22 +65,57 @@ void APingPongGameMode::BeginPlay()
 		}
 	}
 	else
-		UE_LOG( LogPingPongGameMod, Warning, TEXT( "PauseWidget is not defined" ) );
+		UE_LOG( LogPingPongGameMode, Warning, TEXT( "PauseWidget is not defined" ) );
+
+	// Init score screen widget
+	if ( ScoreScreenWidget )
+	{
+		ScoreScreenWidgetInstance = CreateWidget<UScoreScreen>( GetWorld(), ScoreScreenWidget );
+		if ( ScoreScreenWidgetInstance )
+		{
+			ScoreScreenWidgetInstance->AddToViewport();
+		}
+	}
+	else
+		UE_LOG( LogPingPongGameMode, Warning, TEXT( "ScoreScreenWidget is not defined" ) );
 
 	// Init start with start countdown widget
+	CreateCountdownTimer();
+}
+
+void APingPongGameMode::StartOverCountdownTimer( const bool& NeedToStartGameOnTimerEnd )
+{
+	DeleteTimer();
+	CreateCountdownTimer( NeedToStartGameOnTimerEnd );
+}
+
+void APingPongGameMode::CreateCountdownTimer( const bool& NeedToStartGameOnTimerEnd )
+{
 	if ( StartCountdownWidget )
 	{
 		StartCountdownWidgetInstance = CreateWidget<UUserWidget>( GetWorld(), StartCountdownWidget );
 		if ( StartCountdownWidgetInstance )
 		{
 			StartCountdownWidgetInstance->AddToViewport();
-			GetWorldTimerManager().SetTimer( StartCountdownTimer, this, &APingPongGameMode::StartGame, StartCountdownDuration );
-			DisableAllMovements();
-		} else
-			UE_LOG( LogPingPongGameMod, Warning, TEXT( "Error when tries to create StartCountdownWidgetInstance" ) );
+			if ( NeedToStartGameOnTimerEnd )
+			{
+				GetWorldTimerManager().SetTimer( StartCountdownTimer, this, &APingPongGameMode::StartGame, StartCountdownDuration );
+				DisableAllMovements();
+			}
+		}
+		else
+			UE_LOG( LogPingPongGameMode, Warning, TEXT( "Error when tries to create StartCountdownWidgetInstance" ) );
 	}
 	else
-		UE_LOG( LogPingPongGameMod, Warning, TEXT( "PauseWidget is not defined" ) );
+		UE_LOG( LogPingPongGameMode, Warning, TEXT( "StartCountdown widget is not defined" ) );
+}
+
+void APingPongGameMode::DeleteTimer()
+{
+	if ( StartCountdownWidgetInstance )
+		StartCountdownWidgetInstance->Destruct();
+	if ( StartCountdownTimer.IsValid() )
+		StartCountdownTimer.Invalidate();
 }
 
 APlayerBarrier* APingPongGameMode::GetPlayer()
@@ -112,6 +153,7 @@ void APingPongGameMode::StartGame()
 	APingPongGameState* CurrentGameState = Cast<APingPongGameState>( GameState );
 	CurrentGameState->CurrentGameStatus = Playing;
 	EnableAllMovements();
+	DeleteTimer();
 }
 
 void APingPongGameMode::SwapPause()
@@ -136,94 +178,103 @@ void APingPongGameMode::SwapPause()
 	}
 }
 
+void APingPongGameMode::RestartRound()
+{
+	StartOverCountdownTimer( true );
+	
+	// Set all actor locations to start
+	TOptional<FTransform> TempTransform;
+	TempTransform = FindPlayerStartTransform();
+	if ( TempTransform.IsSet() && Player )
+		Player->SetActorLocationAndRotation( TempTransform.GetValue().GetLocation(), TempTransform.GetValue().GetRotation() );
+	else
+		UE_LOG( LogPingPongGameMode, Warning, TEXT( "Failed to reset player position in restart round" ) );
+	TempTransform = FindEnemyStartTransform();
+	if ( TempTransform.IsSet() && Enemy )
+		Enemy->SetActorLocationAndRotation( TempTransform.GetValue().GetLocation(), TempTransform.GetValue().GetRotation() );
+	else
+		UE_LOG( LogPingPongGameMode, Warning, TEXT( "Failed to reset enemy position in restart round" ) );
+	TempTransform = FindBallStartTransform();
+	if ( TempTransform.IsSet() && Ball )
+		Ball->SetActorLocationAndRotation( TempTransform.GetValue().GetLocation(), TempTransform.GetValue().GetRotation() );
+	else
+		UE_LOG( LogPingPongGameMode, Warning, TEXT( "Failed to reset ball position in restart round" ) );
+
+	if ( Ball )
+		Ball->ResetDirection();
+	
+}
+
 void APingPongGameMode::AddPlayerScore( const int& ScoreToAdd )
 {
 	Player->AddScore( ScoreToAdd );
+	if ( ScoreScreenWidgetInstance )
+		ScoreScreenWidgetInstance->ChangePlayerScore( Player->GetScore() );
+	RestartRound();
 }
 
 void APingPongGameMode::AddEnemyScore( const int& ScoreToAdd )
 {
 	Enemy->AddScore( ScoreToAdd );
+	if ( ScoreScreenWidgetInstance )
+		ScoreScreenWidgetInstance->ChangeEnemyScore( Enemy->GetScore() );
+	RestartRound();
+}
+
+template<typename StartType>
+TOptional<FTransform> APingPongGameMode::FindStartTransform( TSubclassOf<AActor> ActorClassToFit ) const
+{
+	StartType* FoundStart = nullptr; // Init variables for function
+	AActor* ActorToFit = ActorClassToFit->GetDefaultObject<AActor>();
+	TArray<StartType*> UnOccupiedStartPoints;
+	TArray<StartType*> OccupiedStartPoints;
+	UWorld* World = GetWorld();
+	for ( TActorIterator<StartType> It( World ); It; ++It ) // Iterate all enemy starts in world
+	{
+		StartType* CurrentStart = *It;
+
+		FVector ActorLocation = CurrentStart->GetActorLocation();
+		const FRotator ActorRotation = CurrentStart->GetActorRotation();
+		if ( !World->EncroachingBlockingGeometry( ActorToFit, ActorLocation, ActorRotation ) ) // Check does start not blocked by something
+		{
+			UnOccupiedStartPoints.Add( CurrentStart );
+		}
+		else if ( World->FindTeleportSpot( ActorToFit, ActorLocation, ActorRotation ) )
+		{
+			OccupiedStartPoints.Add( CurrentStart );
+		}
+	}
+	if ( FoundStart == nullptr )
+	{
+		if ( UnOccupiedStartPoints.Num() > 0 )
+		{
+			FoundStart = UnOccupiedStartPoints[FMath::RandRange( 0, UnOccupiedStartPoints.Num() - 1 )];
+		}
+		else if ( OccupiedStartPoints.Num() > 0 )
+		{
+			FoundStart = OccupiedStartPoints[FMath::RandRange( 0, OccupiedStartPoints.Num() - 1 )];
+		}
+	}
+
+	if ( FoundStart != nullptr )
+		return FTransform( FoundStart->GetActorRotation(), FoundStart->GetActorLocation(), FoundStart->GetActorScale() );
+	else
+		return TOptional<FTransform>();
+}
+
+TOptional<FTransform> APingPongGameMode::FindPlayerStartTransform() const
+{
+	return FindStartTransform<APlayerStart>( DefaultPawnClass );
 }
 
 TOptional<FTransform> APingPongGameMode::FindEnemyStartTransform() const
 {
-	AEnemyStart* FoundEnemyStart = nullptr; // Init variables for function
-	APawn* PawnToFit = DefaultEnemyClass->GetDefaultObject<APawn>();
-	TArray<AEnemyStart*> UnOccupiedStartPoints;
-	TArray<AEnemyStart*> OccupiedStartPoints;
-	UWorld* World = GetWorld();
-	for ( TActorIterator<AEnemyStart> It( World ); It; ++It ) // Iterate all enemy starts in world
-	{
-		AEnemyStart* EnemyStart = *It;
-
-		FVector ActorLocation = EnemyStart->GetActorLocation();
-		const FRotator ActorRotation = EnemyStart->GetActorRotation();
-		if ( !World->EncroachingBlockingGeometry( PawnToFit, ActorLocation, ActorRotation ) ) // Check does enemy start not blocked by something
-		{
-			UnOccupiedStartPoints.Add( EnemyStart );
-		}
-		else if ( World->FindTeleportSpot( PawnToFit, ActorLocation, ActorRotation ) )
-		{
-			OccupiedStartPoints.Add( EnemyStart );
-		}
-	}
-	if ( FoundEnemyStart == nullptr )
-	{
-		if ( UnOccupiedStartPoints.Num() > 0 )
-		{
-			FoundEnemyStart = UnOccupiedStartPoints[FMath::RandRange( 0, UnOccupiedStartPoints.Num() - 1 )];
-		}
-		else if ( OccupiedStartPoints.Num() > 0 )
-		{
-			FoundEnemyStart = OccupiedStartPoints[FMath::RandRange( 0, OccupiedStartPoints.Num() - 1 )];
-		}
-	}
-
-	if ( FoundEnemyStart != nullptr )
-		return FTransform( FoundEnemyStart->GetActorRotation(), FoundEnemyStart->GetActorLocation(), FoundEnemyStart->GetActorScale() );
-	else
-		return TOptional<FTransform>();
+	return FindStartTransform<AEnemyStart>( DefaultEnemyClass );
 }
 
 TOptional<FTransform> APingPongGameMode::FindBallStartTransform() const
 {
-	ABallStart* FoundBallStart = nullptr; // Init variables for function
-	APawn* PawnToFit = DefaultBallClass->GetDefaultObject<APawn>();
-	TArray<ABallStart*> UnOccupiedStartPoints;
-	TArray<ABallStart*> OccupiedStartPoints;
-	UWorld* World = GetWorld();
-	for ( TActorIterator<ABallStart> It( World ); It; ++It ) // Iterate all enemy starts in world
-	{
-		ABallStart* BallStart = *It;
-
-		FVector ActorLocation = BallStart->GetActorLocation();
-		const FRotator ActorRotation = BallStart->GetActorRotation();
-		if ( !World->EncroachingBlockingGeometry( PawnToFit, ActorLocation, ActorRotation ) ) // Check does enemy start not blocked by something
-		{
-			UnOccupiedStartPoints.Add( BallStart );
-		}
-		else if ( World->FindTeleportSpot( PawnToFit, ActorLocation, ActorRotation ) )
-		{
-			OccupiedStartPoints.Add( BallStart );
-		}
-	}
-	if ( FoundBallStart == nullptr )
-	{
-		if ( UnOccupiedStartPoints.Num() > 0 )
-		{
-			FoundBallStart = UnOccupiedStartPoints[FMath::RandRange( 0, UnOccupiedStartPoints.Num() - 1 )];
-		}
-		else if ( OccupiedStartPoints.Num() > 0 )
-		{
-			FoundBallStart = OccupiedStartPoints[FMath::RandRange( 0, OccupiedStartPoints.Num() - 1 )];
-		}
-	}
-
-	if ( FoundBallStart != nullptr )
-		return FTransform( FoundBallStart->GetActorRotation(), FoundBallStart->GetActorLocation(), FoundBallStart->GetActorScale() );
-	else
-		return TOptional<FTransform>();
+	return FindStartTransform<ABallStart>( DefaultBallClass );
 }
 
 void APingPongGameMode::SpawnEnemy( const FTransform& ActorTransform )
