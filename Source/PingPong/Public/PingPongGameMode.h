@@ -140,6 +140,11 @@ public:
 
 	// ~ Widgets
 protected:
+	// Widget that implements score on screen
+	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
+	TSubclassOf<class UScoreScreen> ScoreScreenWidget;
+	// Instance of score screen widget
+	class UScoreScreen* ScoreScreenWidgetInstance;
 	// Widget for pause menu
 	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
 	TSubclassOf<UUserWidget> PauseWidget;

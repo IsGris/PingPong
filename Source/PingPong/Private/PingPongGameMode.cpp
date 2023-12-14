@@ -14,6 +14,7 @@
 #include "EnemyStart.h"
 #include "BallStart.h"
 #include "EngineUtils.h"
+#include "ScoreScreen.h"
 
 DEFINE_LOG_CATEGORY( LogPingPongGameMode );
 
@@ -65,6 +66,18 @@ void APingPongGameMode::BeginPlay()
 	}
 	else
 		UE_LOG( LogPingPongGameMode, Warning, TEXT( "PauseWidget is not defined" ) );
+
+	// Init score screen widget
+	if ( ScoreScreenWidget )
+	{
+		ScoreScreenWidgetInstance = CreateWidget<UScoreScreen>( GetWorld(), ScoreScreenWidget );
+		if ( ScoreScreenWidgetInstance )
+		{
+			ScoreScreenWidgetInstance->AddToViewport();
+		}
+	}
+	else
+		UE_LOG( LogPingPongGameMode, Warning, TEXT( "ScoreScreenWidget is not defined" ) );
 
 	// Init start with start countdown widget
 	CreateCountdownTimer();
@@ -195,12 +208,16 @@ void APingPongGameMode::RestartRound()
 void APingPongGameMode::AddPlayerScore( const int& ScoreToAdd )
 {
 	Player->AddScore( ScoreToAdd );
+	if ( ScoreScreenWidgetInstance )
+		ScoreScreenWidgetInstance->ChangePlayerScore( Player->GetScore() );
 	RestartRound();
 }
 
 void APingPongGameMode::AddEnemyScore( const int& ScoreToAdd )
 {
 	Enemy->AddScore( ScoreToAdd );
+	if ( ScoreScreenWidgetInstance )
+		ScoreScreenWidgetInstance->ChangeEnemyScore( Enemy->GetScore() );
 	RestartRound();
 }
 

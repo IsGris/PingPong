@@ -33,6 +33,9 @@ public:
 	// Adds score to barrier
 	UFUNCTION( BlueprintCallable, Category = "Statistics" )
 	void AddScore( const int& ScoreToAdd = 1 );
+	// Get score of this barrier
+	UFUNCTION( BlueprintCallable, Category = "Statistics" )
+	int GetScore() const;
 protected:
 	// Score of the barrier
 	UPROPERTY( VisibleAnywhere, BlueprintReadWrite, Category = "Statistics" )

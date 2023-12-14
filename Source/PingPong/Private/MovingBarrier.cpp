@@ -33,7 +33,12 @@ AMovingBarrier::AMovingBarrier() : Super()
 
 void AMovingBarrier::AddScore( const int& ScoreToAdd )
 {
-	this->Score += Score;
+	this->Score += ScoreToAdd;
+}
+
+int AMovingBarrier::GetScore() const
+{
+	return Score;
 }
 
 #if WITH_EDITORONLY_DATA
