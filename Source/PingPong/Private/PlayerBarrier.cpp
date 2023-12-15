@@ -55,11 +55,15 @@ void APlayerBarrier::SetupPlayerInputComponent( UInputComponent* PlayerInputComp
 
 void APlayerBarrier::Move( const FInputActionValue& ActionValue )
 {
-    if ( CanMove )
-    {
-        if ( APlayerBarrierController* PlayerController = Cast<APlayerBarrierController>( Controller ) )
-            PlayerController->MoveUp( ActionValue.Get<float>() * Speed );
-        else
-            UE_LOG( LogPlayerBarrier, Warning, TEXT( "Can't cast player controller to MovingBarrierController" ) );
-    }
+    // Check does we can move in this direction
+    if ( AvialibleMoveDirection == MoveDirection::NoMovement ||
+         !( AvialibleMoveDirection == MoveDirection::UpAndDown ||
+         ( ActionValue.Get<float>() > 0 && AvialibleMoveDirection == MoveDirection::Up ) ||
+         ( ActionValue.Get<float>() < 0 && AvialibleMoveDirection == MoveDirection::Down ) ) )
+        return;
+
+    if ( APlayerBarrierController* PlayerController = Cast<APlayerBarrierController>( Controller ) )
+        PlayerController->MoveUp( ActionValue.Get<float>() * Speed );
+    else
+        UE_LOG( LogPlayerBarrier, Warning, TEXT( "Can't cast player controller to MovingBarrierController" ) );
 }

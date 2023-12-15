@@ -6,6 +6,15 @@
 #include "GameFramework/Pawn.h"
 #include "MovingBarrier.generated.h"
 
+UENUM()
+enum class MoveDirection
+{
+	NoMovement      UMETA( DisplayName = "NoMovement" ),
+	UpAndDown       UMETA( DisplayName = "UpAndDown" ),
+	Up              UMETA( DisplayName = "Up" ),
+	Down            UMETA( DisplayName = "Down" )
+};
+
 /*
 * Moving barrier for ping pong game
 */
@@ -20,12 +29,19 @@ protected:
 
 	// ~ Movement
 public:
-	// Does barrier can move
-	UPROPERTY( BlueprintReadWrite, Category = "Movement" )
-	bool CanMove = false;
 	// Speed of the barrier
 	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Movement" )
 	int Speed = 1;
+protected:
+	// Where can move this barrier
+	MoveDirection AvialibleMoveDirection = MoveDirection::NoMovement;
+public:
+	// Set where can move this barrier
+	UFUNCTION( BlueprintCallable, Category = "Movement" )
+	void SetAvialibleMoveDirection( const MoveDirection& Value );
+	// Get where can move this barrier
+	UFUNCTION( BlueprintCallable, Category = "Movement" )
+	MoveDirection GetAvialibleMoveDirection() const;
 	// ~ Movement
 
 	// ~ Statistics
@@ -50,6 +66,11 @@ protected:
 	// Box of the barrier that implements collision
 	UPROPERTY( EditDefaultsOnly, Category = "Appearance" )
 	class UBoxComponent* CollisionBox;
+	// Limit movement if hits wall
+	UFUNCTION()
+	void OnBoxBeginOverlap( UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult );
+	UFUNCTION()
+	void OnBoxEndOverlap( UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex );
 #if WITH_EDITORONLY_DATA
 private:
 	UPROPERTY()

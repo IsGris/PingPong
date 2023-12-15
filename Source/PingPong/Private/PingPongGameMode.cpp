@@ -136,15 +136,15 @@ ABall* APingPongGameMode::GetBall()
 void APingPongGameMode::EnableAllMovements()
 {
 	Ball->CanMove = true;
-	Player->CanMove = true;
-	Enemy->CanMove = true;
+	Player->SetAvialibleMoveDirection( MoveDirection::UpAndDown );
+	Enemy->SetAvialibleMoveDirection( MoveDirection::UpAndDown );
 }
 
 void APingPongGameMode::DisableAllMovements()
 {
 	Ball->CanMove = false;
-	Player->CanMove = false;
-	Enemy->CanMove = false;
+	Player->SetAvialibleMoveDirection( MoveDirection::NoMovement );
+	Enemy->SetAvialibleMoveDirection( MoveDirection::NoMovement );
 }
 
 void APingPongGameMode::StartGame()

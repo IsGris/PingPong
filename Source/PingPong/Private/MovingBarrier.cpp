@@ -13,6 +13,8 @@ AMovingBarrier::AMovingBarrier() : Super()
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>( TEXT( "StaticMesh" ) );
 	StaticMesh->SetupAttachment( Cast< USceneComponent >( CollisionBox ) );
 	CollisionBox->SetGenerateOverlapEvents( true );
+	CollisionBox->OnComponentBeginOverlap.AddDynamic( this, &AMovingBarrier::OnBoxBeginOverlap );
+	CollisionBox->OnComponentEndOverlap.AddDynamic( this, &AMovingBarrier::OnBoxEndOverlap );
 	StaticMesh->SetGenerateOverlapEvents( false );
 #if WITH_EDITORONLY_DATA
 	ArrowComponent = CreateEditorOnlyDefaultSubobject<UArrowComponent>( TEXT( "Arrow" ) );
@@ -31,6 +33,16 @@ AMovingBarrier::AMovingBarrier() : Super()
 #endif // WITH_EDITORONLY_DATA
 }
 
+void AMovingBarrier::SetAvialibleMoveDirection( const MoveDirection& Value )
+{
+	AvialibleMoveDirection = Value;
+}
+
+MoveDirection AMovingBarrier::GetAvialibleMoveDirection() const
+{
+	return AvialibleMoveDirection;
+}
+
 void AMovingBarrier::AddScore( const int& ScoreToAdd )
 {
 	this->Score += ScoreToAdd;
@@ -39,6 +51,31 @@ void AMovingBarrier::AddScore( const int& ScoreToAdd )
 int AMovingBarrier::GetScore() const
 {
 	return Score;
+}
+
+void AMovingBarrier::OnBoxBeginOverlap( UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult )
+{
+	// Limit movement if barrier hits wall
+	if ( !OtherActor->ActorHasTag( FName( TEXT( "Wall" ) ) ) )
+		return;
+
+	if ( OverlappedComp->GetComponentLocation().Z > OtherActor->GetActorLocation().Z )
+	{
+		AvialibleMoveDirection = MoveDirection::Up;
+	}
+	else
+	{
+		AvialibleMoveDirection = MoveDirection::Down;
+	}
+}
+
+void AMovingBarrier::OnBoxEndOverlap( UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex )
+{
+	// Limit movement if barrier hits wall
+	if ( !OtherActor->ActorHasTag( FName( TEXT( "Wall" ) ) ) )
+		return;
+
+	AvialibleMoveDirection = MoveDirection::UpAndDown;
 }
 
 #if WITH_EDITORONLY_DATA
