@@ -7,6 +7,7 @@
 #include "TwoDimensionalMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "EnemyBarrier.h"
+#include "MovingBarrier.h"
 
 AEnemyController::AEnemyController()
 {
@@ -14,11 +15,18 @@ AEnemyController::AEnemyController()
 	MovementComponent = CreateDefaultSubobject<UTwoDimensionalMovementComponent>( "2DMovementComponent" );
 }
 
-void AEnemyController::PerformMove( const float& MaxMoveDistance )
+void AEnemyController::PerformMove( const float& MaxMoveDistance, const MoveDirection& AvialibleDirection = MoveDirection::UpAndDown )
 {
-	if ( APingPongGameMode* GameMode = Cast<APingPongGameMode>( UGameplayStatics::GetGameMode( GetWorld() ) ) )
-		// calculates where the enemy should move and how many units without going beyond the boundaries of MaxMoveDistance and makes move
-		MoveUp( FMath::Clamp<float>( GameMode->GetBall()->GetActorLocation().Z - GetPawn()->GetRootComponent()->GetComponentLocation().Z, -MaxMoveDistance, MaxMoveDistance ) );
+	APingPongGameMode* GameMode = Cast<APingPongGameMode>( UGameplayStatics::GetGameMode( GetWorld() ) );
+
+	if ( GameMode == nullptr )
+		return;
+
+	// Calculates where the enemy should move and how many units without going beyond the boundaries of MaxMoveDistance and makes move
+	auto MoveValue = FMath::Clamp<float>( GameMode->GetBall()->GetActorLocation().Z - GetPawn()->GetRootComponent()->GetComponentLocation().Z, -MaxMoveDistance, MaxMoveDistance );
+	// Check does we can move in this direction
+	if ( AvialibleDirection == MoveDirection::UpAndDown || ( MoveValue > 0 && AvialibleDirection == MoveDirection::Up ) || ( MoveValue < 0 && AvialibleDirection == MoveDirection::Down ) )
+		MoveUp( MoveValue );
 }
 
 void AEnemyController::MoveUp( const float& Value )
@@ -49,6 +57,6 @@ void AEnemyController::Move( const FVector2f& Value )
 void AEnemyController::Tick( float DeltaTime )
 {
 	if ( auto CurrentOwner = Cast<AEnemyBarrier>( GetPawn() ) )
-		if ( CurrentOwner->CanMove )
-			PerformMove( CurrentOwner->Speed * DeltaTime );
+		if ( CurrentOwner->GetAvialibleMoveDirection() != MoveDirection::NoMovement )
+			PerformMove( CurrentOwner->Speed * DeltaTime, CurrentOwner->GetAvialibleMoveDirection() );
 }

@@ -21,7 +21,7 @@ class PINGPONG_API AEnemyController : public AAIController
 public:
 	// Make move to get closer to the ball
 	UFUNCTION( BlueprintCallable, Category = "Movement" )
-	void PerformMove( const float& MaxMoveDistance );
+	void PerformMove( const float& MaxMoveDistance, const enum MoveDirection& AvialibleDirection );
 	UFUNCTION( BlueprintCallable, Category = "Movement" )
 	void MoveUp( const float& Value );
 	UFUNCTION( BlueprintCallable, Category = "Movement" )
