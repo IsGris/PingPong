@@ -34,12 +34,16 @@ public:
 	// Does ball can move
 	UPROPERTY( BlueprintReadWrite, Category = "Movement" )
 	bool CanMove = false;
-	// Current speed of ball
-	UPROPERTY( EditAnywhere, Category = "Movement" )
-	int Speed = 1;
+	// Speed of ball on start
+	UPROPERTY( EditDefaultsOnly, Category = "Movement" )
+	int StartSpeed = 1;
 	// How much does speed of ball increase when hit player or enemy
 	UPROPERTY( EditDefaultsOnly, Category = "Movement" )
 	int Acceleration = 0.5f;
+protected:
+	// Current speed of ball
+	UPROPERTY( VisibleAnywhere, BlueprintReadWrite , Category = "Movement" )
+	int CurrentSpeed;
 protected:
 	// Direction in which ball moving
 	UPROPERTY(BlueprintReadWrite, Category = "Movement")

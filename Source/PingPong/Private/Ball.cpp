@@ -39,13 +39,14 @@ void ABall::BeginPlay()
 {
 	Super::BeginPlay();
 
-	Direction = { float( FMath::RandBool() ? 1 : -1 ), FMath::RandRange( 1.0f, -1.0f ) };
+	ResetDirection();
 
 }
 
 void ABall::ResetDirection()
 {
 	Direction = { float( FMath::RandBool() ? 1 : -1 ), FMath::RandRange( 1.0f, -1.0f ) };
+	CurrentSpeed = StartSpeed;
 }
 
 void ABall::Tick( float DeltaTime )
@@ -55,7 +56,7 @@ void ABall::Tick( float DeltaTime )
 	if ( CanMove )
 	{
 		if ( ABallController* BallController = Cast<ABallController>( Controller ) )
-			BallController->Move( Direction * DeltaTime * Speed );
+			BallController->Move( Direction * DeltaTime * CurrentSpeed );
 		else
 			UE_LOG( LogPingPongBall, Warning, TEXT( "Can't cast ball controller to ABallController" ) );
 	}
@@ -78,8 +79,8 @@ void ABall::OnBoxBeginOverlap( UPrimitiveComponent* OverlappedComp, AActor* Othe
 		float DistanceToBottom = FMath::Abs( BallPosition - BottomPoint );
 		float TotalDistance = FMath::Abs( TopPoint - BottomPoint );
 		
-		Direction = FVector2f( -Direction.X, 1 - 2 * ( DistanceToTop / TotalDistance ) );
-		Speed += Acceleration;
+		Direction = FVector2f( -Direction.X, FMath::Clamp(1 - 2 * ( DistanceToTop / TotalDistance ), -0.85f, 0.85f) );
+		CurrentSpeed += Acceleration;
 	}
 	else if ( OtherActor->ActorHasTag( FName( TEXT( "PlayerGate" ) ) ) ) // Hitted with gate
 	{
