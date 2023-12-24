@@ -46,7 +46,7 @@ void APlayerBarrier::SetupPlayerInputComponent( UInputComponent* PlayerInputComp
 
         if ( PauseAction )
         {
-            PlayerEnhancedInputComponent->BindAction( PauseAction, ETriggerEvent::Triggered, Cast<APingPongGameMode>( UGameplayStatics::GetGameMode( GetWorld() ) ), &APingPongGameMode::SwapPause );
+            PlayerEnhancedInputComponent->BindAction( PauseAction, ETriggerEvent::Triggered, Cast<APingPongGameMode>( UGameplayStatics::GetGameMode( GetWorld() ) ), &APingPongGameMode::HandleGoBackButton );
         }
         else
             UE_LOG( LogPlayerBarrier, Warning, TEXT( "PauseAction is not defined" ) );

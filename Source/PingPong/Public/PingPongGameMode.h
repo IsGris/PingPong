@@ -38,8 +38,6 @@ protected:
 	// Delete timer from viewport if not deleted yet
 	UFUNCTION( BlueprintCallable, Category = "Countdown Timer" )
 	void DeleteTimer();
-	// Timer used for countdown and start game
-	struct FTimerHandle StartCountdownTimer;
 	// ~ Countdown Timer
 
 	// ~ Variables
@@ -69,12 +67,12 @@ protected:
 	TObjectPtr<class APlayerBarrier> Player;
 	TObjectPtr<class AEnemyBarrier> Enemy;
 	TObjectPtr<class ABall> Ball;
-	// How many seconds wait before game starts
-	UPROPERTY( EditDefaultsOnly, Category = "Start" )
-	float StartCountdownDuration = 3;
 	// ~ Variables
 
 	// ~ Status
+protected:
+	UPROPERTY( BlueprintReadwrite, Category = "Status" )
+	bool IsGameStarted = false;
 public:
 	// Enable all movements for player, ball and enemy
 	UFUNCTION( BlueprintCallable, Category = "Status" )
@@ -85,12 +83,21 @@ public:
 	// Start ping pong game
 	UFUNCTION( BlueprintCallable, Category = "Status" )
 	void StartGame();
-	// Swaps current pause state if playing or paused
+	// Handle if player press go back(for example, returning to the game from a pause)
 	UFUNCTION( BlueprintCallable, Category = "Status" )
-	void SwapPause();
+	void HandleGoBackButton();
+	// Open main menu
+	UFUNCTION( BlueprintCallable, Category = "Status" )
+	void OpenMainMenu();
+	// Sets new Game status and handle it
+	UFUNCTION( BlueprintCallable, Category = "Status" )
+	bool ChangeGameStatus( const TEnumAsByte<enum GameStatus> NewGameStatus );
 	// Restarts current round
 	UFUNCTION( BlueprintCallable, Category = "Status" )
 	void RestartRound();
+	// Restarts current game
+	UFUNCTION( BlueprintCallable, Category = "Status" )
+	void RestartGame();
 	// Add score to player
 	UFUNCTION( BlueprintCallable, Category = "Status" )
 	void AddPlayerScore( const int& ScoreToAdd = 1 );
@@ -139,25 +146,84 @@ public:
 	// ~ Find functions
 
 	// ~ Widgets
+	// ~ ~ Functions
+	// ~ ~ ~ Hide
+protected:
+	// Get current game status and hide all widget from this game status
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Hide" )
+	void HideCurrentGameStatusScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Hide" )
+	bool HideGameOverScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Hide" )
+	bool HideStartingCountdown();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Hide" )
+	bool HidePauseScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Hide" )
+	bool HideOptionsScreen();
+	// ~ ~ ~ Hide
+	// ~ ~ ~ Show
+protected:
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Show" )
+	bool ShowGameOverScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Show" )
+	bool ShowStartingCountdown();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Show" )
+	bool ShowPauseScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Show" )
+	bool ShowOptionsScreen();
+	// ~ ~ ~ Show
+	// ~ ~ ~ IsAvialible
+protected:
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|IsAvialible" )
+	bool IsAvialibleGameOverScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|IsAvialible" )
+	bool IsAvialibleStartingCountdown();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|IsAvialible" )
+	bool IsAvialiblePauseScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|IsAvialible" )
+	bool IsAvialibleOptionsScreen();
+	// ~ ~ ~ IsAvialible
+	// ~ ~ ~ Misc
+protected:
+	// Init widget on screen and make it hidden
+	template<typename WidgetType UE_REQUIRES( TIsDerivedFrom<WidgetType, class UUserWidget>::Value )>
+	bool InitWidgetInstance( const TSubclassOf<WidgetType> Widget, TObjectPtr<WidgetType>& WidgetInstance );
+	// ~ ~ ~ Misc
+	// ~ ~ Functions
 protected:
 	// Widget that implements score on screen
 	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
 	TSubclassOf<class UScoreScreen> ScoreScreenWidget;
 	// Instance of score screen widget
-	class UScoreScreen* ScoreScreenWidgetInstance;
+	TObjectPtr<class UScoreScreen> ScoreScreenWidgetInstance;
 	// Widget for pause menu
 	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
 	TSubclassOf<UUserWidget> PauseWidget;
 	// Instance of pause menu widget
-	class UUserWidget* PauseWidgetInstance;
+	TObjectPtr<class UUserWidget> PauseWidgetInstance;
 	// Widget for start countdown
 	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
 	TSubclassOf<class UUserWidget> StartCountdownWidget;
 	// Instance of countdown widget
 	TObjectPtr<class UUserWidget> StartCountdownWidgetInstance;
+	// Widget for game over screen
+	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
+	TSubclassOf<class UUserWidget> GameOverWidget;
+	// Instance of game over screen widget
+	TObjectPtr<class UUserWidget> GameOverWidgetInstance;
+	// Widget for options screen
+	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
+	TSubclassOf<class UUserWidget> OptionsWidget;
+	// Instance of options widget
+	TObjectPtr<class UUserWidget> OptionsWidgetInstance;
 	// ~ Widgets
 	
 	// ~ Miscellaneous
+protected:
+	// Pointer to main menu level
+	UPROPERTY( EditDefaultsOnly, Category = "Levels" )
+	TAssetPtr<class UWorld> MainMenuLevel;
+public:
 	// Changes controller for pawn
 	UFUNCTION( BlueprintCallable, Category = "Miscellaneous" )
 	void ChangePawnController( UClass* ControllerType, APawn* Pawn );
