@@ -8,6 +8,17 @@
 
 #include "PingPongGameMode.generated.h"
 
+// Describes all sounds in game
+UENUM()
+enum class PingPongSound
+{
+	BallBounce       UMETA( DisplayName = "BallBounce" ),
+	EnemyScored        UMETA( DisplayName = "EnemyScored" ),
+	PlayerScored       UMETA( DisplayName = "PlayerScored" ),
+	Lose         UMETA( DisplayName = "Lose" ),
+	Win        UMETA( DisplayName = "Win" )
+};
+
 DECLARE_LOG_CATEGORY_EXTERN( LogPingPongGameMode, Log, All );
 
 /**
@@ -145,6 +156,40 @@ public:
 	class AActor* FindActorWithType( UClass* ActorType ) const;
 	// ~ Find functions
 
+	// ~ Audio
+	// ~ ~ Functions
+public:
+	// Init all audio systems
+	void InitAudio();
+	// Change current effects volume
+	UFUNCTION( BlueprintCallable, Category = "Audio|Volume" )
+	void SetEffectsVolume( const float& NewVolume );
+	// Get current effects volume
+	UFUNCTION( BlueprintCallable, Category = "Audio|Volume" )
+	float GetEffectsVolume() const;
+	// Play certain effect sound
+	UFUNCTION( BlueprintCallable, Category = "Audio|Effects" )
+	void PlayEffectSound( const TEnumAsByte<PingPongSound>& SoundToPlay );
+	// ~ ~ Functions
+	// ~ ~ Variables
+protected:
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	TAssetPtr<USoundClass> EffectsSoundClass;
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	TAssetPtr<USoundMix> EffectsSoundMixClass;
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	TAssetPtr<USoundBase> BallBounceSound;
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	TAssetPtr<USoundBase> EnemyScoredSound;
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	TAssetPtr<USoundBase> PlayerScoredSound;
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	TAssetPtr<USoundBase> LoseSound;
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	TAssetPtr<USoundBase> WinSound;
+	// ~ ~ Variables
+	// ~ Audio
+
 	// ~ Widgets
 	// ~ ~ Functions
 	// ~ ~ ~ Hide
@@ -190,6 +235,7 @@ protected:
 	bool InitWidgetInstance( const TSubclassOf<WidgetType> Widget, TObjectPtr<WidgetType>& WidgetInstance );
 	// ~ ~ ~ Misc
 	// ~ ~ Functions
+	// ~ ~ Variables
 protected:
 	// Widget that implements score on screen
 	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
@@ -216,6 +262,7 @@ protected:
 	TSubclassOf<class UUserWidget> OptionsWidget;
 	// Instance of options widget
 	TObjectPtr<class UUserWidget> OptionsWidgetInstance;
+	// ~ ~ Variables
 	// ~ Widgets
 	
 	// ~ Miscellaneous

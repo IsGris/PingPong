@@ -16,6 +16,7 @@
 #include "EngineUtils.h"
 #include "ScoreScreen.h"
 #include "PingPongGameState.h"
+#include "PingPongGameInstance.h"
 
 DEFINE_LOG_CATEGORY( LogPingPongGameMode );
 
@@ -366,6 +367,44 @@ inline ActorType* APingPongGameMode::FindActorWithType() const
 AActor* APingPongGameMode::FindActorWithType( UClass* ActorType ) const
 {
 	return UGameplayStatics::GetActorOfClass( GetWorld(), ActorType );
+}
+
+void APingPongGameMode::InitAudio()
+{
+	UGameplayStatics::PushSoundMixModifier( GetWorld(), EffectsSoundMixClass.Get() );
+}
+
+void APingPongGameMode::SetEffectsVolume( const float& NewVolume )
+{
+	Cast<UPingPongGameInstance>( UGameplayStatics::GetGameInstance( GetWorld() ) )->SetEffectsVolume( NewVolume );
+	UGameplayStatics::SetSoundMixClassOverride( GetWorld(), EffectsSoundMixClass.Get(), EffectsSoundClass.Get(), NewVolume, 1, 0 );
+}
+
+float APingPongGameMode::GetEffectsVolume() const
+{
+	return Cast<UPingPongGameInstance>( UGameplayStatics::GetGameInstance( GetWorld() ) )->GetEffectsVolume();
+}
+
+void APingPongGameMode::PlayEffectSound( const TEnumAsByte<PingPongSound>& SoundToPlay )
+{
+	switch ( SoundToPlay.GetValue() )
+	{
+		case PingPongSound::BallBounce:
+			UGameplayStatics::PlaySound2D( GetWorld(), BallBounceSound.Get() );
+			break;
+		case PingPongSound::EnemyScored:
+			UGameplayStatics::PlaySound2D( GetWorld(), EnemyScoredSound.Get() );
+			break;
+		case PingPongSound::PlayerScored:
+			UGameplayStatics::PlaySound2D( GetWorld(), PlayerScoredSound.Get() );
+			break;
+		case PingPongSound::Lose:
+			UGameplayStatics::PlaySound2D( GetWorld(), LoseSound.Get() );
+			break;
+		case PingPongSound::Win:
+			UGameplayStatics::PlaySound2D( GetWorld(), WinSound.Get() );
+			break;
+	}
 }
 
 void APingPongGameMode::HideCurrentGameStatusScreen()
