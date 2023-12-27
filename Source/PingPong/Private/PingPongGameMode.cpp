@@ -74,6 +74,9 @@ void APingPongGameMode::BeginPlay()
 	CreateCountdownTimer();
 	if ( APlayerController* PlayerController = Cast<APlayerController>( Player->GetController() ) )
 		PlayerController->SetInputMode( FInputModeGameAndUI() );
+
+	// Init settings
+	SetEffectsVolume( GetEffectsVolume() ); // Get default volume and set it
 }
 
 void APingPongGameMode::StartOverCountdownTimer( const bool& NeedToStartGameOnTimerEnd )

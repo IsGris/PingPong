@@ -17,7 +17,10 @@ class PINGPONG_API UPingPongGameInstance : public UGameInstance
 {
 	GENERATED_BODY()
 	
+	// Init game instance
 	virtual void Init() override;
+	// Init settings
+	void InitUserSettings();
 
 protected:
 	TObjectPtr<USettingsSaveGame> SettingsSave;
@@ -31,4 +34,19 @@ public:
 	UFUNCTION( BlueprintCallable, Category = "Audio|Volume" )
 	float GetEffectsVolume() const;
 	// ~ Audio
+	// ~ Screen
+public:
+	// Set current Vsync state
+	UFUNCTION( BlueprintCallable, Category = "Screen|V-Sync" )
+	void SetVSyncEnabled( const bool& IsEnabled );
+	// Get current Vsync state
+	UFUNCTION( BlueprintCallable, Category = "Screen|V-Sync" )
+	bool GetVSyncEnabled() const;
+	// Set current FPS maximum
+	UFUNCTION( BlueprintCallable, Category = "Screen|FPS" )
+	void SetFPSLimit( const float& NewFPSLimit );
+	// Get current FPS maximum
+	UFUNCTION( BlueprintCallable, Category = "Screen|FPS" )
+	float GetFPSLimit() const;
+	// ~ Screen
 };

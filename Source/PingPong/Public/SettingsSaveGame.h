@@ -16,20 +16,18 @@ class PINGPONG_API USettingsSaveGame : public USaveGame
 {
 	GENERATED_BODY()
 	
-private:
+public:
 	UPROPERTY( SaveGame, EditDefaultsOnly, Category = "Audio" )
 	float EffectsVolume = 1.0f;
+	UPROPERTY( SaveGame, EditDefaultsOnly, Category = "Screen" )
+	bool IsVSyncEnabled = false;
+	UPROPERTY( SaveGame, EditDefaultsOnly, Category = "Screen" )
+	float FPS = 60.0f;
 
-public:
-	UPROPERTY( VisibleAnywhere, Category = "data" )
+	UPROPERTY( VisibleAnywhere, Category = "Data" )
 	FString SaveSlotName = DEFAULT_SETTINGS_SAVE_SLOT;
 	UPROPERTY( VisibleAnywhere, Category = "Data" )
 	uint32 UserIndex = 0;
-
-	UFUNCTION( BlueprintCallable, Category = "Audio" )
-	void SetEffectsVolume( const float& NewVolume );
-	UFUNCTION( BlueprintCallable, Category = "Audio" )
-	float GetEffectsVolume() const;
 
 	UFUNCTION( BlueprintCallable, Category = "Data" )
 	void SaveData();
