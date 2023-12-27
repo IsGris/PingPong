@@ -174,19 +174,19 @@ public:
 	// ~ ~ Variables
 protected:
 	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
-	TAssetPtr<USoundClass> EffectsSoundClass;
+	TSoftObjectPtr<class USoundClass> EffectsSoundClass;
 	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
-	TAssetPtr<USoundMix> EffectsSoundMixClass;
+	TSoftObjectPtr<class USoundMix> EffectsSoundMixClass;
 	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
-	TAssetPtr<USoundBase> BallBounceSound;
+	class USoundBase* BallBounceSound;
 	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
-	TAssetPtr<USoundBase> EnemyScoredSound;
+	class USoundBase* EnemyScoredSound;
 	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
-	TAssetPtr<USoundBase> PlayerScoredSound;
+	class USoundBase* PlayerScoredSound;
 	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
-	TAssetPtr<USoundBase> LoseSound;
+	class USoundBase* LoseSound;
 	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
-	TAssetPtr<USoundBase> WinSound;
+	class USoundBase* WinSound;
 	// ~ ~ Variables
 	// ~ Audio
 
@@ -266,10 +266,18 @@ protected:
 	// ~ Widgets
 	
 	// ~ Miscellaneous
+	// ~ ~ Delegates
 protected:
+	UFUNCTION()
+	void OnBallHitBarrier();
+	UFUNCTION()
+	void OnPlayerWinRound();
+	UFUNCTION()
+	void OnEnemyWinRound();
+	// ~ ~ Delegates
 	// Pointer to main menu level
 	UPROPERTY( EditDefaultsOnly, Category = "Levels" )
-	TAssetPtr<class UWorld> MainMenuLevel;
+	TSoftObjectPtr<class UWorld> MainMenuLevel;
 public:
 	// Changes controller for pawn
 	UFUNCTION( BlueprintCallable, Category = "Miscellaneous" )

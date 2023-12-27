@@ -3,7 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "Engine/GameInstance.h"
+#include "SettingsSaveGame.h"
+
 #include "PingPongGameInstance.generated.h"
 
 /**
@@ -14,6 +17,11 @@ class PINGPONG_API UPingPongGameInstance : public UGameInstance
 {
 	GENERATED_BODY()
 	
+	virtual void Init() override;
+
+protected:
+	TObjectPtr<USettingsSaveGame> SettingsSave;
+
 	// ~ Audio
 public:
 	// Change current effects volume

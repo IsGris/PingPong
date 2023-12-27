@@ -17,6 +17,9 @@
 #include "ScoreScreen.h"
 #include "PingPongGameState.h"
 #include "PingPongGameInstance.h"
+#include "Sound/SoundBase.h"
+#include "Sound/SoundMix.h"
+#include "Sound/SoundClass.h"
 
 DEFINE_LOG_CATEGORY( LogPingPongGameMode );
 
@@ -53,8 +56,15 @@ void APingPongGameMode::BeginPlay()
 	Enemy = FindEnemy();
 	Ball = FindBall();
 
-	ChangePawnController( DefaultEnemyControllerClass, Cast<APawn>(Enemy) );
-	ChangePawnController( DefaultBallControllerClass, Cast<APawn>( Ball) );
+	ChangePawnController( DefaultEnemyControllerClass, Cast<APawn>( Enemy ) );
+	ChangePawnController( DefaultBallControllerClass, Cast<APawn>( Ball ) );
+
+	if ( Ball )
+	{
+		Ball->OnBarrierHit.AddDynamic( this, &APingPongGameMode::OnBallHitBarrier );
+		Ball->OnPlayerGateScored.AddDynamic( this, &APingPongGameMode::OnEnemyWinRound );
+		Ball->OnEnemyGateScored.AddDynamic( this, &APingPongGameMode::OnPlayerWinRound );
+	}
 
 	// Init widgets
 	InitWidgetInstance( ScoreScreenWidget, ScoreScreenWidgetInstance );
@@ -94,7 +104,7 @@ void APingPongGameMode::CreateCountdownTimer( const bool& NeedToStartGameOnTimer
 
 void APingPongGameMode::DeleteTimer()
 {
-	if ( StartCountdownWidgetInstance )
+	if ( StartCountdownWidgetInstance && StartCountdownWidgetInstance->IsConstructed() )
 	{
 		StartCountdownWidgetInstance->RemoveFromParent();
 		StartCountdownWidgetInstance->Destruct();
@@ -376,13 +386,25 @@ void APingPongGameMode::InitAudio()
 
 void APingPongGameMode::SetEffectsVolume( const float& NewVolume )
 {
-	Cast<UPingPongGameInstance>( UGameplayStatics::GetGameInstance( GetWorld() ) )->SetEffectsVolume( NewVolume );
-	UGameplayStatics::SetSoundMixClassOverride( GetWorld(), EffectsSoundMixClass.Get(), EffectsSoundClass.Get(), NewVolume, 1, 0 );
+	auto PingPongGameInstance = Cast<UPingPongGameInstance>( UGameplayStatics::GetGameInstance( GetWorld() ) );
+	auto WorldContext = GetWorld();
+	if ( PingPongGameInstance &&
+		 WorldContext &&
+		 !EffectsSoundMixClass.IsNull() &&
+		 !EffectsSoundClass.IsNull()
+		)
+	{
+		PingPongGameInstance->SetEffectsVolume( NewVolume );
+		UGameplayStatics::SetSoundMixClassOverride( WorldContext, EffectsSoundMixClass.Get(), EffectsSoundClass.Get(), NewVolume, 1.0f, 0.0f );
+	}
 }
 
 float APingPongGameMode::GetEffectsVolume() const
 {
-	return Cast<UPingPongGameInstance>( UGameplayStatics::GetGameInstance( GetWorld() ) )->GetEffectsVolume();
+	if ( auto PingPongGameInstance = Cast<UPingPongGameInstance>( UGameplayStatics::GetGameInstance( GetWorld() ) ) )
+		return PingPongGameInstance->GetEffectsVolume();
+	else
+		return 1.0f;
 }
 
 void APingPongGameMode::PlayEffectSound( const TEnumAsByte<PingPongSound>& SoundToPlay )
@@ -390,19 +412,19 @@ void APingPongGameMode::PlayEffectSound( const TEnumAsByte<PingPongSound>& Sound
 	switch ( SoundToPlay.GetValue() )
 	{
 		case PingPongSound::BallBounce:
-			UGameplayStatics::PlaySound2D( GetWorld(), BallBounceSound.Get() );
+			UGameplayStatics::PlaySound2D( this, BallBounceSound );
 			break;
 		case PingPongSound::EnemyScored:
-			UGameplayStatics::PlaySound2D( GetWorld(), EnemyScoredSound.Get() );
+			UGameplayStatics::PlaySound2D( this, EnemyScoredSound );
 			break;
 		case PingPongSound::PlayerScored:
-			UGameplayStatics::PlaySound2D( GetWorld(), PlayerScoredSound.Get() );
+			UGameplayStatics::PlaySound2D( this, PlayerScoredSound );
 			break;
 		case PingPongSound::Lose:
-			UGameplayStatics::PlaySound2D( GetWorld(), LoseSound.Get() );
+			UGameplayStatics::PlaySound2D( this, LoseSound );
 			break;
 		case PingPongSound::Win:
-			UGameplayStatics::PlaySound2D( GetWorld(), WinSound.Get() );
+			UGameplayStatics::PlaySound2D( this, WinSound );
 			break;
 	}
 }
@@ -580,6 +602,23 @@ bool APingPongGameMode::InitWidgetInstance( const TSubclassOf<WidgetType> Widget
 		UE_LOG( LogPingPongGameMode, Warning, TEXT( "Widget given in function InitWidgetInstance is not defined" ) );
 		return false;
 	}
+}
+
+void APingPongGameMode::OnBallHitBarrier()
+{
+	PlayEffectSound( PingPongSound::BallBounce );
+}
+
+void APingPongGameMode::OnPlayerWinRound()
+{
+	AddPlayerScore();
+	PlayEffectSound( PingPongSound::PlayerScored );
+}
+
+void APingPongGameMode::OnEnemyWinRound()
+{
+	AddEnemyScore();
+	PlayEffectSound( PingPongSound::EnemyScored );
 }
 
 void APingPongGameMode::ChangePawnController( UClass* ControllerType, APawn* Pawn )

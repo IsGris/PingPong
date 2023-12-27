@@ -68,6 +68,9 @@ void ABall::OnBoxBeginOverlap( UPrimitiveComponent* OverlappedComp, AActor* Othe
 		Direction.Y *= -1;
 	else if ( OtherActor->ActorHasTag( FName( TEXT( "MovingBarrier" ) ) ) ) // Hitted player or enemy
 	{
+		if ( ( OtherActor->ActorHasTag( FName( TEXT( "Player" ) ) ) && Direction.X >= 0 ) || ( OtherActor->ActorHasTag( FName( TEXT( "Enemy" ) ) ) && Direction.X < 0 ) )
+			return;
+
 		FVector CollidedOrigin;
 		FVector CollidedBounds;
 		OtherActor->GetActorBounds( true, CollidedOrigin, CollidedBounds );
@@ -81,18 +84,13 @@ void ABall::OnBoxBeginOverlap( UPrimitiveComponent* OverlappedComp, AActor* Othe
 		
 		Direction = FVector2f( -Direction.X, FMath::Clamp(1 - 2 * ( DistanceToTop / TotalDistance ), -0.85f, 0.85f) );
 		CurrentSpeed += Acceleration;
+		
+		OnBarrierHit.Broadcast();
 	}
 	else if ( OtherActor->ActorHasTag( FName( TEXT( "PlayerGate" ) ) ) ) // Hitted with gate
-	{
-		if ( APingPongGameMode* GameMode = Cast<APingPongGameMode>( UGameplayStatics::GetGameMode( GetWorld() ) ) ) {
-			GameMode->AddEnemyScore();
-		}
-	}
+		OnPlayerGateScored.Broadcast();
 	else if ( OtherActor->ActorHasTag( FName( TEXT( "EnemyGate" ) ) ) )
-	{
-		if ( APingPongGameMode* GameMode = Cast<APingPongGameMode>( UGameplayStatics::GetGameMode( GetWorld() ) ) )
-			GameMode->AddPlayerScore();
-	}
+		OnEnemyGateScored.Broadcast();
 }
 
 #if WITH_EDITORONLY_DATA
