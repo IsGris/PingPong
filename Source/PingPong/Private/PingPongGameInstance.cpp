@@ -26,13 +26,22 @@ void UPingPongGameInstance::InitUserSettings()
 	Settings->ApplySettings( true );
 }
 
-void UPingPongGameInstance::SetEffectsVolume( const float& NewVolume )
+void UPingPongGameInstance::SaveGame()
+{
+	if ( !SettingsSave )
+		return;
+
+	SettingsSave->SaveData();
+}
+
+void UPingPongGameInstance::SetEffectsVolume( const float& NewVolume, const bool& SaveSettings )
 {
 	if ( !SettingsSave )
 		return;
 
 	SettingsSave->EffectsVolume = NewVolume;
-	SettingsSave->SaveData();
+	if ( SaveSettings )
+		SettingsSave->SaveData();
 }
 
 float UPingPongGameInstance::GetEffectsVolume() const

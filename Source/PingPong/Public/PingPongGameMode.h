@@ -8,6 +8,10 @@
 
 #include "PingPongGameMode.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams( FOnGameStatusChanged, const TEnumAsByte<enum GameStatus>&, NewGameStatus, const TEnumAsByte<enum GameStatus>&, OldGameStatus );
+
+class FOnGameStatusChanged;
+
 // Describes all sounds in game
 UENUM()
 enum class PingPongSound
@@ -85,6 +89,9 @@ protected:
 	UPROPERTY( BlueprintReadwrite, Category = "Status" )
 	bool IsGameStarted = false;
 public:
+	// Update game save file
+	UFUNCTION( BlueprintCallable, Category = "Status" )
+	void SaveGame();
 	// Enable all movements for player, ball and enemy
 	UFUNCTION( BlueprintCallable, Category = "Status" )
 	void EnableAllMovements();
@@ -163,7 +170,7 @@ public:
 	void InitAudio();
 	// Change current effects volume
 	UFUNCTION( BlueprintCallable, Category = "Audio|Volume" )
-	void SetEffectsVolume( const float& NewVolume );
+	void SetEffectsVolume( const float& NewVolume, const bool& SaveSettings = false );
 	// Get current effects volume
 	UFUNCTION( BlueprintCallable, Category = "Audio|Volume" )
 	float GetEffectsVolume() const;
@@ -264,9 +271,9 @@ protected:
 	TObjectPtr<class UUserWidget> OptionsWidgetInstance;
 	// ~ ~ Variables
 	// ~ Widgets
-	
-	// ~ Miscellaneous
-	// ~ ~ Delegates
+
+	// ~ Delegates
+	// ~ ~ Functions
 protected:
 	UFUNCTION()
 	void OnBallHitBarrier();
@@ -274,7 +281,18 @@ protected:
 	void OnPlayerWinRound();
 	UFUNCTION()
 	void OnEnemyWinRound();
-	// ~ ~ Delegates
+	UFUNCTION()
+	void TrySaveGameOnChangedStatus( const TEnumAsByte<GameStatus>& NewGameStatus, const TEnumAsByte<GameStatus>& OldGameStatus );
+	// ~ ~ Functions
+	// ~ ~ Events
+	UPROPERTY( BlueprintAssignable, Category = "Events" )
+	FOnGameStatusChanged OnGameStatusChanged;
+	// ~ ~ Events
+	// ~ Delegates
+	
+
+	// ~ Miscellaneous
+protected:
 	// Pointer to main menu level
 	UPROPERTY( EditDefaultsOnly, Category = "Levels" )
 	TSoftObjectPtr<class UWorld> MainMenuLevel;

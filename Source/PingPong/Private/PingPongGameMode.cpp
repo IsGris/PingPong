@@ -17,6 +17,8 @@
 #include "ScoreScreen.h"
 #include "PingPongGameState.h"
 #include "PingPongGameInstance.h"
+#include "Components/AudioComponent.h"
+#include "Engine/World.h"
 #include "Sound/SoundBase.h"
 #include "Sound/SoundMix.h"
 #include "Sound/SoundClass.h"
@@ -77,6 +79,8 @@ void APingPongGameMode::BeginPlay()
 
 	// Init settings
 	SetEffectsVolume( GetEffectsVolume() ); // Get default volume and set it
+
+	OnGameStatusChanged.AddDynamic( this, &APingPongGameMode::TrySaveGameOnChangedStatus );
 }
 
 void APingPongGameMode::StartOverCountdownTimer( const bool& NeedToStartGameOnTimerEnd )
@@ -156,6 +160,14 @@ void APingPongGameMode::HandleGoBackButton()
 void APingPongGameMode::OpenMainMenu()
 {
 	UGameplayStatics::OpenLevel( GetWorld(), FName(*MainMenuLevel.GetAssetName()));
+}
+
+void APingPongGameMode::SaveGame()
+{
+	if ( auto PingPongGameInstance = Cast<UPingPongGameInstance>( UGameplayStatics::GetGameInstance( GetWorld() ) ) )
+	{
+		PingPongGameInstance->SaveGame();
+	}
 }
 
 void APingPongGameMode::EnableAllMovements()
@@ -239,11 +251,17 @@ bool APingPongGameMode::ChangeGameStatus( const TEnumAsByte<GameStatus> NewGameS
 		}
 		break;
 	}
+
+	OnGameStatusChanged.Broadcast( NewGameStatus, CurrentGameStatus );
 	return true;
 }
 
 void APingPongGameMode::RestartRound()
 {
+	IsGameStarted = false;
+
+	Cast<APingPongGameState>( GameState )->CurrentGameStatus = Starting;
+
 	StartOverCountdownTimer( true );
 	
 	// Set all actor locations to start
@@ -387,7 +405,7 @@ void APingPongGameMode::InitAudio()
 	UGameplayStatics::PushSoundMixModifier( GetWorld(), EffectsSoundMixClass.Get() );
 }
 
-void APingPongGameMode::SetEffectsVolume( const float& NewVolume )
+void APingPongGameMode::SetEffectsVolume( const float& NewVolume, const bool& SaveSettings )
 {
 	auto PingPongGameInstance = Cast<UPingPongGameInstance>( UGameplayStatics::GetGameInstance( GetWorld() ) );
 	auto WorldContext = GetWorld();
@@ -397,8 +415,8 @@ void APingPongGameMode::SetEffectsVolume( const float& NewVolume )
 		 !EffectsSoundClass.IsNull()
 		)
 	{
-		PingPongGameInstance->SetEffectsVolume( NewVolume );
-		UGameplayStatics::SetSoundMixClassOverride( WorldContext, EffectsSoundMixClass.Get(), EffectsSoundClass.Get(), NewVolume, 1.0f, 0.0f );
+		PingPongGameInstance->SetEffectsVolume( NewVolume, SaveSettings );
+		EffectsSoundClass->Properties.Volume = NewVolume;
 	}
 }
 
@@ -622,6 +640,12 @@ void APingPongGameMode::OnEnemyWinRound()
 {
 	AddEnemyScore();
 	PlayEffectSound( PingPongSound::EnemyScored );
+}
+
+void APingPongGameMode::TrySaveGameOnChangedStatus( const TEnumAsByte<GameStatus>& NewGameStatus, const TEnumAsByte<GameStatus>& OldGameStatus )
+{
+	if ( NewGameStatus == Paused && OldGameStatus == Options )
+		SaveGame();
 }
 
 void APingPongGameMode::ChangePawnController( UClass* ControllerType, APawn* Pawn )

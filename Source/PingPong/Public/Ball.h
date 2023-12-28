@@ -59,12 +59,12 @@ protected:
 	// ~ Misc
 public:
 	// Broadcasts when the ball was scored into the player's gate
-	UPROPERTY( BlueprintAssignable )
+	UPROPERTY( BlueprintAssignable, Category = "Events" )
 	FOnBallScoredGate OnPlayerGateScored;
 	// Broadcasts when the ball was scored into the enemy's gate
-	UPROPERTY( BlueprintAssignable )
+	UPROPERTY( BlueprintAssignable, Category = "Events" )
 	FOnBallScoredGate OnEnemyGateScored;
-	UPROPERTY( BlueprintAssignable )
+	UPROPERTY( BlueprintAssignable, Category = "Events" )
 	FOnBallHitBarrier OnBarrierHit;
 protected:
 	// Called evey frame
