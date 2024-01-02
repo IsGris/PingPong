@@ -298,6 +298,8 @@ protected:
 	UPROPERTY( EditDefaultsOnly, Category = "Levels" )
 	TSoftObjectPtr<class UWorld> MainMenuLevel;
 public:
+	UFUNCTION( BlueprintPure, Category = "Miscellaneous" )
+	static bool IsGameStatusUI( const TEnumAsByte<GameStatus>& GameStatusValue );
 	// Changes controller for pawn
 	UFUNCTION( BlueprintCallable, Category = "Miscellaneous" )
 	void ChangePawnController( UClass* ControllerType, APawn* Pawn );

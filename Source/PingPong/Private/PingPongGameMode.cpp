@@ -75,7 +75,7 @@ void APingPongGameMode::BeginPlay()
 	InitWidgetInstance( OptionsWidget, OptionsWidgetInstance );
 	CreateCountdownTimer();
 	if ( APlayerController* PlayerController = Cast<APlayerController>( Player->GetController() ) )
-		PlayerController->SetInputMode( FInputModeGameAndUI() );
+		PlayerController->SetInputMode( FInputModeGameOnly() );
 
 	// Init settings
 	SetEffectsVolume( GetEffectsVolume() ); // Get default volume and set it
@@ -113,7 +113,6 @@ void APingPongGameMode::DeleteTimer()
 {
 	if ( StartCountdownWidgetInstance )
 	{
-		StartCountdownWidgetInstance->RemoveFromParent();
 		StartCountdownWidgetInstance->Destruct();
 	}
 }
@@ -205,6 +204,29 @@ bool APingPongGameMode::ChangeGameStatus( const TEnumAsByte<GameStatus> NewGameS
 	if ( NewGameStatus == CurrentGameStatus )
 		return true;
 
+	if ( IsGameStatusUI( NewGameStatus ) )
+	{
+		if ( APlayerController* PlayerControllerRef = UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
+		{
+			PlayerControllerRef->SetShowMouseCursor( true );
+			PlayerControllerRef->SetInputMode( FInputModeUIOnly() );
+			UGameplayStatics::SetGamePaused( GetWorld(), true );
+		}
+		else
+			return false;
+	}
+	else
+	{
+		if ( APlayerController* PlayerControllerRef = UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
+		{
+			PlayerControllerRef->SetShowMouseCursor( false );
+			PlayerControllerRef->SetInputMode( FInputModeGameOnly() );
+			UGameplayStatics::SetGamePaused( GetWorld(), false );
+		}
+		else
+			return false;
+	}
+
 	switch ( NewGameStatus ) // Change current game status
 	{
 	case GameOver:
@@ -268,12 +290,18 @@ void APingPongGameMode::RestartRound()
 	TOptional<FTransform> TempTransform;
 	TempTransform = FindPlayerStartTransform();
 	if ( TempTransform.IsSet() && Player )
+	{
 		Player->SetActorLocationAndRotation( TempTransform.GetValue().GetLocation(), TempTransform.GetValue().GetRotation() );
+		Player->SetAvialibleMoveDirection( MoveDirection::NoMovement );
+	}
 	else
 		UE_LOG( LogPingPongGameMode, Warning, TEXT( "Failed to reset player position in restart round" ) );
 	TempTransform = FindEnemyStartTransform();
 	if ( TempTransform.IsSet() && Enemy )
+	{
 		Enemy->SetActorLocationAndRotation( TempTransform.GetValue().GetLocation(), TempTransform.GetValue().GetRotation() );
+		Enemy->SetAvialibleMoveDirection( MoveDirection::NoMovement );
+	}
 	else
 		UE_LOG( LogPingPongGameMode, Warning, TEXT( "Failed to reset enemy position in restart round" ) );
 	TempTransform = FindBallStartTransform();
@@ -477,12 +505,7 @@ bool APingPongGameMode::HideGameOverScreen()
 {
 	if ( !GameOverWidgetInstance )
 		return false;
-	if ( APlayerController* PlayerControllerRef = UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
-		PlayerControllerRef->SetShowMouseCursor( false );
-	else
-		return false;
 	GameOverWidgetInstance->SetVisibility( ESlateVisibility::Hidden );
-	UGameplayStatics::SetGamePaused( GetWorld(), false );
 	return true;
 }
 
@@ -498,12 +521,7 @@ bool APingPongGameMode::HidePauseScreen()
 {
 	if ( !PauseWidgetInstance )
 		return false;
-	if ( APlayerController* PlayerControllerRef = UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
-		PlayerControllerRef->SetShowMouseCursor( false );
-	else
-		return false;
 	PauseWidgetInstance->SetVisibility( ESlateVisibility::Hidden );
-	UGameplayStatics::SetGamePaused( GetWorld(), false );
 	return true;
 }
 
@@ -511,12 +529,7 @@ bool APingPongGameMode::HideOptionsScreen()
 {
 	if ( !OptionsWidgetInstance )
 		return false;
-	if ( APlayerController* PlayerControllerRef = UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
-		PlayerControllerRef->SetShowMouseCursor( false );
-	else
-		return false;
 	OptionsWidgetInstance->SetVisibility( ESlateVisibility::Hidden );
-	UGameplayStatics::SetGamePaused( GetWorld(), false );
 	return true;
 }
 
@@ -524,12 +537,7 @@ bool APingPongGameMode::ShowGameOverScreen()
 {
 	if ( !GameOverWidgetInstance )
 		return false;
-	if ( APlayerController* PlayerControllerRef = UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
-		PlayerControllerRef->SetShowMouseCursor( true );
-	else
-		return false;
 	GameOverWidgetInstance->SetVisibility( ESlateVisibility::Visible );
-	UGameplayStatics::SetGamePaused( GetWorld(), true );
 	return true;
 }
 
@@ -545,12 +553,7 @@ bool APingPongGameMode::ShowPauseScreen()
 {
 	if ( !PauseWidgetInstance )
 		return false;
-	if ( APlayerController* PlayerControllerRef = UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
-		PlayerControllerRef->SetShowMouseCursor( true );
-	else
-		return false;
 	PauseWidgetInstance->SetVisibility( ESlateVisibility::Visible );
-	UGameplayStatics::SetGamePaused( GetWorld(), true );
 	return true;
 }
 
@@ -558,12 +561,7 @@ bool APingPongGameMode::ShowOptionsScreen()
 {
 	if ( !OptionsWidgetInstance )
 		return false;
-	if ( APlayerController* PlayerControllerRef = UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
-		PlayerControllerRef->SetShowMouseCursor( true );
-	else
-		return false;
 	OptionsWidgetInstance->SetVisibility( ESlateVisibility::Visible );
-	UGameplayStatics::SetGamePaused( GetWorld(), true );
 	return true;
 }
 
@@ -646,6 +644,11 @@ void APingPongGameMode::TrySaveGameOnChangedStatus( const TEnumAsByte<GameStatus
 {
 	if ( NewGameStatus == Paused && OldGameStatus == Options )
 		SaveGame();
+}
+
+bool APingPongGameMode::IsGameStatusUI( const TEnumAsByte<GameStatus>& GameStatusValue )
+{
+	return ( GameStatusValue == GameOver || GameStatusValue == Paused || GameStatusValue == Options );
 }
 
 void APingPongGameMode::ChangePawnController( UClass* ControllerType, APawn* Pawn )
