@@ -5,10 +5,11 @@
 #include "CoreMinimal.h"
 
 #include "GameFramework/GameModeBase.h"
+#include "PingPongGameState.h"
 
 #include "PingPongGameMode.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams( FOnGameStatusChanged, const TEnumAsByte<enum GameStatus>&, NewGameStatus, const TEnumAsByte<enum GameStatus>&, OldGameStatus );
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams( FOnGameStatusChanged, const TEnumAsByte<GameStatus>&, NewGameStatus, const TEnumAsByte<GameStatus>&, OldGameStatus );
 
 class FOnGameStatusChanged;
 
@@ -170,7 +171,7 @@ public:
 	void InitAudio();
 	// Change current effects volume
 	UFUNCTION( BlueprintCallable, Category = "Audio|Volume" )
-	void SetEffectsVolume( const float& NewVolume, const bool& SaveSettings = false );
+	void SetEffectsVolume( const float& NewVolume, bool SaveSettings = false );
 	// Get current effects volume
 	UFUNCTION( BlueprintCallable, Category = "Audio|Volume" )
 	float GetEffectsVolume() const;

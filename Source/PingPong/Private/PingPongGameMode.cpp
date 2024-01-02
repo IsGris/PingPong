@@ -111,7 +111,7 @@ void APingPongGameMode::CreateCountdownTimer( const bool& NeedToStartGameOnTimer
 
 void APingPongGameMode::DeleteTimer()
 {
-	if ( StartCountdownWidgetInstance && StartCountdownWidgetInstance->IsConstructed() )
+	if ( StartCountdownWidgetInstance )
 	{
 		StartCountdownWidgetInstance->RemoveFromParent();
 		StartCountdownWidgetInstance->Destruct();
@@ -405,7 +405,7 @@ void APingPongGameMode::InitAudio()
 	UGameplayStatics::PushSoundMixModifier( GetWorld(), EffectsSoundMixClass.Get() );
 }
 
-void APingPongGameMode::SetEffectsVolume( const float& NewVolume, const bool& SaveSettings )
+void APingPongGameMode::SetEffectsVolume( const float& NewVolume, bool SaveSettings )
 {
 	auto PingPongGameInstance = Cast<UPingPongGameInstance>( UGameplayStatics::GetGameInstance( GetWorld() ) );
 	auto WorldContext = GetWorld();
