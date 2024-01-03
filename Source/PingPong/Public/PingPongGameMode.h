@@ -240,7 +240,7 @@ protected:
 protected:
 	// Init widget on screen and make it hidden
 	template<typename WidgetType UE_REQUIRES( TIsDerivedFrom<WidgetType, class UUserWidget>::Value )>
-	bool InitWidgetInstance( const TSubclassOf<WidgetType> Widget, TObjectPtr<WidgetType>& WidgetInstance );
+	bool InitWidgetInstance( const TSubclassOf<WidgetType> Widget, TObjectPtr<WidgetType>& WidgetInstance, const bool& IsVisible = false );
 	// ~ ~ ~ Misc
 	// ~ ~ Functions
 	// ~ ~ Variables

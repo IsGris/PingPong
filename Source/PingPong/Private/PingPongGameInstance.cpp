@@ -6,9 +6,12 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/GameUserSettings.h"
 
+DEFINE_LOG_CATEGORY( LogPingPongGameInstance );
+
 void UPingPongGameInstance::Init()
 {
 	InitUserSettings();
+	UE_LOG( LogPingPongGameInstance, Log, TEXT( "Game instance inited" ) );
 }
 
 void UPingPongGameInstance::InitUserSettings()
@@ -24,6 +27,8 @@ void UPingPongGameInstance::InitUserSettings()
 	Settings->SetVSyncEnabled( SettingsSave->IsVSyncEnabled );
 	Settings->SetFrameRateLimit( SettingsSave->FPS );
 	Settings->ApplySettings( true );
+
+	UE_LOG( LogPingPongGameInstance, Verbose, TEXT( "User settings inited" ) );
 }
 
 void UPingPongGameInstance::SaveGame()

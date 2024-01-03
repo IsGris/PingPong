@@ -33,6 +33,7 @@ ABall::ABall() : Super()
 
 	bIsSpatiallyLoaded = false;
 #endif // WITH_EDITORONLY_DATA
+	UE_LOG( LogPingPongBall, Log, TEXT( "Components inited" ) );
 }
 
 void ABall::BeginPlay()
@@ -47,6 +48,7 @@ void ABall::ResetDirection()
 {
 	Direction = { float( FMath::RandBool() ? 1 : -1 ), FMath::RandRange( 1.0f, -1.0f ) };
 	CurrentSpeed = StartSpeed;
+	UE_LOG( LogPingPongBall, Verbose, TEXT( "Direction reseted" ) );
 }
 
 void ABall::Tick( float DeltaTime )

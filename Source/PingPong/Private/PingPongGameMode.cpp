@@ -53,6 +53,8 @@ void APingPongGameMode::BeginPlay()
 	else
 		UE_LOG( LogPingPongGameMode, Warning, TEXT( "BallStart transform not finded cannot reset round" ) );
 
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "All entities spawned" ) );
+
 	// Init variables
 	Player = FindPlayer();
 	Enemy = FindEnemy();
@@ -68,8 +70,10 @@ void APingPongGameMode::BeginPlay()
 		Ball->OnEnemyGateScored.AddDynamic( this, &APingPongGameMode::OnPlayerWinRound );
 	}
 
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "All entities configured" ) );
+
 	// Init widgets
-	InitWidgetInstance( ScoreScreenWidget, ScoreScreenWidgetInstance );
+	InitWidgetInstance( ScoreScreenWidget, ScoreScreenWidgetInstance, true );
 	InitWidgetInstance( PauseWidget, PauseWidgetInstance );
 	InitWidgetInstance( GameOverWidget, GameOverWidgetInstance );
 	InitWidgetInstance( OptionsWidget, OptionsWidgetInstance );
@@ -77,10 +81,14 @@ void APingPongGameMode::BeginPlay()
 	if ( APlayerController* PlayerController = Cast<APlayerController>( Player->GetController() ) )
 		PlayerController->SetInputMode( FInputModeGameOnly() );
 
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "All widgets configured" ) );
+
 	// Init settings
 	SetEffectsVolume( GetEffectsVolume() ); // Get default volume and set it
 
 	OnGameStatusChanged.AddDynamic( this, &APingPongGameMode::TrySaveGameOnChangedStatus );
+
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "All settings configured" ) );
 }
 
 void APingPongGameMode::StartOverCountdownTimer( const bool& NeedToStartGameOnTimerEnd )
@@ -154,6 +162,8 @@ void APingPongGameMode::HandleGoBackButton()
 			OpenMainMenu();
 			break;
 	}
+
+	UE_LOG( LogPingPongGameMode, Verbose, TEXT( "Go back button successfully handled" ) );
 }
 
 void APingPongGameMode::OpenMainMenu()
@@ -166,6 +176,7 @@ void APingPongGameMode::SaveGame()
 	if ( auto PingPongGameInstance = Cast<UPingPongGameInstance>( UGameplayStatics::GetGameInstance( GetWorld() ) ) )
 	{
 		PingPongGameInstance->SaveGame();
+		UE_LOG( LogPingPongGameMode, Log, TEXT( "Game successfully saved" ) );
 	}
 }
 
@@ -174,6 +185,7 @@ void APingPongGameMode::EnableAllMovements()
 	Ball->CanMove = true;
 	Player->SetAvialibleMoveDirection( MoveDirection::UpAndDown );
 	Enemy->SetAvialibleMoveDirection( MoveDirection::UpAndDown );
+	UE_LOG( LogPingPongGameMode, VeryVerbose, TEXT( "Movement enabled" ) );
 }
 
 void APingPongGameMode::DisableAllMovements()
@@ -181,6 +193,7 @@ void APingPongGameMode::DisableAllMovements()
 	Ball->CanMove = false;
 	Player->SetAvialibleMoveDirection( MoveDirection::NoMovement );
 	Enemy->SetAvialibleMoveDirection( MoveDirection::NoMovement );
+	UE_LOG( LogPingPongGameMode, VeryVerbose, TEXT( "Movement disabled" ) );
 }
 
 void APingPongGameMode::StartGame()
@@ -191,6 +204,7 @@ void APingPongGameMode::StartGame()
 	IsGameStarted = true;
 	EnableAllMovements();
 	DeleteTimer();
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "Game started" ) );
 }
 
 bool APingPongGameMode::ChangeGameStatus( const TEnumAsByte<GameStatus> NewGameStatus )
@@ -275,6 +289,9 @@ bool APingPongGameMode::ChangeGameStatus( const TEnumAsByte<GameStatus> NewGameS
 	}
 
 	OnGameStatusChanged.Broadcast( NewGameStatus, CurrentGameStatus );
+
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "Game status changed" ) );
+	
 	return true;
 }
 
@@ -312,7 +329,9 @@ void APingPongGameMode::RestartRound()
 
 	if ( Ball )
 		Ball->ResetDirection();
-	
+
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "Round restarted" ) );
+
 }
 
 void APingPongGameMode::RestartGame()
@@ -326,6 +345,7 @@ void APingPongGameMode::AddPlayerScore( const int& ScoreToAdd )
 	if ( ScoreScreenWidgetInstance )
 		ScoreScreenWidgetInstance->ChangePlayerScore( Player->GetScore() );
 	RestartRound();
+	UE_LOG( LogPingPongGameMode, VeryVerbose, TEXT( "Added player score" ) );
 }
 
 void APingPongGameMode::AddEnemyScore( const int& ScoreToAdd )
@@ -334,6 +354,7 @@ void APingPongGameMode::AddEnemyScore( const int& ScoreToAdd )
 	if ( ScoreScreenWidgetInstance )
 		ScoreScreenWidgetInstance->ChangeEnemyScore( Enemy->GetScore() );
 	RestartRound();
+	UE_LOG( LogPingPongGameMode, VeryVerbose, TEXT( "Added enemy score" ) );
 }
 
 template<typename StartType>
@@ -431,6 +452,7 @@ AActor* APingPongGameMode::FindActorWithType( UClass* ActorType ) const
 void APingPongGameMode::InitAudio()
 {
 	UGameplayStatics::PushSoundMixModifier( GetWorld(), EffectsSoundMixClass.Get() );
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "Audio inited" ) );
 }
 
 void APingPongGameMode::SetEffectsVolume( const float& NewVolume, bool SaveSettings )
@@ -445,6 +467,7 @@ void APingPongGameMode::SetEffectsVolume( const float& NewVolume, bool SaveSetti
 	{
 		PingPongGameInstance->SetEffectsVolume( NewVolume, SaveSettings );
 		EffectsSoundClass->Properties.Volume = NewVolume;
+		UE_LOG( LogPingPongGameMode, VeryVerbose, TEXT( "Effects volume changed" ) );
 	}
 }
 
@@ -598,7 +621,7 @@ bool APingPongGameMode::IsAvialibleOptionsScreen()
 }
 
 template<typename WidgetType UE_REQUIRES( TIsDerivedFrom<WidgetType, class UUserWidget>::Value )>
-bool APingPongGameMode::InitWidgetInstance( const TSubclassOf<WidgetType> Widget, TObjectPtr<WidgetType>& WidgetInstance )
+bool APingPongGameMode::InitWidgetInstance( const TSubclassOf<WidgetType> Widget, TObjectPtr<WidgetType>& WidgetInstance, const bool& IsVisible )
 {
 	if ( Widget )
 	{
@@ -606,7 +629,9 @@ bool APingPongGameMode::InitWidgetInstance( const TSubclassOf<WidgetType> Widget
 		if ( WidgetInstance )
 		{
 			WidgetInstance->AddToViewport();
-			WidgetInstance->SetVisibility( ESlateVisibility::Hidden );
+			if ( !IsVisible )
+				WidgetInstance->SetVisibility( ESlateVisibility::Hidden );
+			UE_LOG( LogPingPongGameMode, Verbose, TEXT( "Widget instance %s successfully inited" ), Widget.Get()->GetClass()->GetFName() );
 			return true;
 		}
 		else
@@ -667,6 +692,7 @@ void APingPongGameMode::ChangePawnController( UClass* ControllerType, APawn* Paw
 	NewController->Possess( Pawn );
 	Pawn->Controller = NewController;
 
+	UE_LOG( LogPingPongGameMode, Verbose, TEXT( "Successfully changed controller to %s for pawn %s" ), ControllerType->GetFName(), Pawn->GetFName() );
 }
 
 template<typename ControllerType UE_REQUIRES( TIsDerivedFrom<ControllerType, AController>::Value )>

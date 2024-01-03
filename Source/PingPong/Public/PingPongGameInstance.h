@@ -9,6 +9,8 @@
 
 #include "PingPongGameInstance.generated.h"
 
+DECLARE_LOG_CATEGORY_EXTERN( LogPingPongGameInstance, Log, All );
+
 /**
  * Game instance for ping pong
  */
