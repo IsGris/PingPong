@@ -26,6 +26,7 @@ class PINGPONG_API UPingPongGameInstance : public UGameInstance
 
 	// ~ Settings
 protected:
+	UPROPERTY( BlueprintReadWrite, Category = "Data" )
 	TObjectPtr<USettingsSaveGame> SettingsSave;
 public:
 	// Save current game data to file
