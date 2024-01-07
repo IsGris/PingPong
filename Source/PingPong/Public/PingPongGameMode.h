@@ -46,14 +46,11 @@ private:
 public:
 	// Start Countdown timer from start
 	UFUNCTION( BlueprintCallable, Category = "Countdown Timer" )
-	void StartOverCountdownTimer(const bool& NeedToStartGameOnTimerEnd = true);
+	void StartOverCountdownTimer();
 protected:
 	// Create timer in viewport
 	UFUNCTION( BlueprintCallable, Category = "Countdown Timer" )
-	void CreateCountdownTimer( const bool& NeedToStartGameOnTimerEnd = true );
-	// Delete timer from viewport if not deleted yet
-	UFUNCTION( BlueprintCallable, Category = "Countdown Timer" )
-	void DeleteTimer();
+	void CreateCountdownTimer();
 	// ~ Countdown Timer
 
 	// ~ Variables

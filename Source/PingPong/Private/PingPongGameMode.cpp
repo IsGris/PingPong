@@ -70,6 +70,8 @@ void APingPongGameMode::BeginPlay()
 		Ball->OnEnemyGateScored.AddDynamic( this, &APingPongGameMode::OnPlayerWinRound );
 	}
 
+	DisableAllMovements();
+
 	UE_LOG( LogPingPongGameMode, Log, TEXT( "All entities configured" ) );
 
 	// Init widgets
@@ -91,13 +93,12 @@ void APingPongGameMode::BeginPlay()
 	UE_LOG( LogPingPongGameMode, Log, TEXT( "All settings configured" ) );
 }
 
-void APingPongGameMode::StartOverCountdownTimer( const bool& NeedToStartGameOnTimerEnd )
+void APingPongGameMode::StartOverCountdownTimer()
 {
-	DeleteTimer();
-	CreateCountdownTimer( NeedToStartGameOnTimerEnd );
+	CreateCountdownTimer();
 }
 
-void APingPongGameMode::CreateCountdownTimer( const bool& NeedToStartGameOnTimerEnd )
+void APingPongGameMode::CreateCountdownTimer()
 {
 	if ( StartCountdownWidget )
 	{
@@ -105,24 +106,12 @@ void APingPongGameMode::CreateCountdownTimer( const bool& NeedToStartGameOnTimer
 		if ( StartCountdownWidgetInstance )
 		{
 			StartCountdownWidgetInstance->AddToViewport();
-			if ( NeedToStartGameOnTimerEnd )
-			{
-				DisableAllMovements();
-			}
 		}
 		else
-			UE_LOG( LogPingPongGameMode, Warning, TEXT( "Error when tries to create StartCountdownWidgetInstance" ) );
+			StartCountdownWidgetInstance->Construct();
 	}
 	else
 		UE_LOG( LogPingPongGameMode, Warning, TEXT( "StartCountdown widget is not defined" ) );
-}
-
-void APingPongGameMode::DeleteTimer()
-{
-	if ( StartCountdownWidgetInstance )
-	{
-		StartCountdownWidgetInstance->Destruct();
-	}
 }
 
 APlayerBarrier* APingPongGameMode::GetPlayer()
@@ -203,7 +192,7 @@ void APingPongGameMode::StartGame()
 	CurrentGameState->CurrentGameStatus = Playing;
 	IsGameStarted = true;
 	EnableAllMovements();
-	DeleteTimer();
+	HideStartingCountdown();
 	UE_LOG( LogPingPongGameMode, Log, TEXT( "Game started" ) );
 }
 
@@ -301,7 +290,7 @@ void APingPongGameMode::RestartRound()
 
 	Cast<APingPongGameState>( GameState )->CurrentGameStatus = Starting;
 
-	StartOverCountdownTimer( true );
+	StartOverCountdownTimer();
 	
 	// Set all actor locations to start
 	TOptional<FTransform> TempTransform;
@@ -329,6 +318,8 @@ void APingPongGameMode::RestartRound()
 
 	if ( Ball )
 		Ball->ResetDirection();
+
+	DisableAllMovements();
 
 	UE_LOG( LogPingPongGameMode, Log, TEXT( "Round restarted" ) );
 
