@@ -79,6 +79,7 @@ void APingPongGameMode::BeginPlay()
 	InitWidgetInstance( PauseWidget, PauseWidgetInstance );
 	InitWidgetInstance( GameOverWidget, GameOverWidgetInstance );
 	InitWidgetInstance( OptionsWidget, OptionsWidgetInstance );
+	InitWidgetInstance( WinWidget, WinWidgetInstance );
 	CreateCountdownTimer();
 	if ( APlayerController* PlayerController = Cast<APlayerController>( Player->GetController() ) )
 		PlayerController->SetInputMode( FInputModeGameOnly() );
@@ -237,7 +238,16 @@ bool APingPongGameMode::ChangeGameStatus( const TEnumAsByte<GameStatus> NewGameS
 			return false;
 		HideCurrentGameStatusScreen();
 		ShowGameOverScreen();
+		PlayEffectSound( PingPongSound::Lose );
 		CurrentGameStatus = GameOver;
+		break;
+	case Win:
+		if ( CurrentGameStatus != Playing )
+			return false;
+		HideCurrentGameStatusScreen();
+		ShowWinScreen();
+		PlayEffectSound( PingPongSound::Win );
+		CurrentGameStatus = Win;
 		break;
 	case Playing:
 		if ( !( CurrentGameStatus == Starting || CurrentGameStatus == Paused || CurrentGameStatus == Options ) )
@@ -327,7 +337,9 @@ void APingPongGameMode::RestartRound()
 
 void APingPongGameMode::RestartGame()
 {
-	UGameplayStatics::OpenLevel( GetWorld(), FName( *GetWorld()->GetMapName() ) ); // Reopen current level and then all starts from beginning
+	FString CurrentLevelName = GetWorld()->GetMapName();
+	CurrentLevelName.RemoveFromStart( GetWorld()->StreamingLevelsPrefix );
+	UGameplayStatics::OpenLevel( GetWorld(), FName( CurrentLevelName ) ); // Reopen current level and then all starts from beginning
 }
 
 void APingPongGameMode::AddPlayerScore( const int& ScoreToAdd )
@@ -335,7 +347,10 @@ void APingPongGameMode::AddPlayerScore( const int& ScoreToAdd )
 	Player->AddScore( ScoreToAdd );
 	if ( ScoreScreenWidgetInstance )
 		ScoreScreenWidgetInstance->ChangePlayerScore( Player->GetScore() );
-	RestartRound();
+	if ( Player->GetScore() >= ScoreToWin )
+		ChangeGameStatus( Win );
+	else
+		RestartRound();
 	UE_LOG( LogPingPongGameMode, VeryVerbose, TEXT( "Added player score" ) );
 }
 
@@ -344,7 +359,10 @@ void APingPongGameMode::AddEnemyScore( const int& ScoreToAdd )
 	Enemy->AddScore( ScoreToAdd );
 	if ( ScoreScreenWidgetInstance )
 		ScoreScreenWidgetInstance->ChangeEnemyScore( Enemy->GetScore() );
-	RestartRound();
+	if ( Enemy->GetScore() >= ScoreToWin )
+		ChangeGameStatus( GameOver );
+	else
+		RestartRound();
 	UE_LOG( LogPingPongGameMode, VeryVerbose, TEXT( "Added enemy score" ) );
 }
 
@@ -503,6 +521,9 @@ void APingPongGameMode::HideCurrentGameStatusScreen()
 		case GameOver:
 			HideGameOverScreen();
 			break;
+		case Win:
+			HideWinScreen();
+			break;
 		case Starting:
 			HideStartingCountdown();
 			break;
@@ -547,6 +568,14 @@ bool APingPongGameMode::HideOptionsScreen()
 	return true;
 }
 
+bool APingPongGameMode::HideWinScreen()
+{
+	if ( !WinWidgetInstance )
+		return false;
+	WinWidgetInstance->SetVisibility( ESlateVisibility::Hidden );
+	return true;
+}
+
 bool APingPongGameMode::ShowGameOverScreen()
 {
 	if ( !GameOverWidgetInstance )
@@ -579,6 +608,14 @@ bool APingPongGameMode::ShowOptionsScreen()
 	return true;
 }
 
+bool APingPongGameMode::ShowWinScreen()
+{
+	if ( !WinWidgetInstance )
+		return false;
+	WinWidgetInstance->SetVisibility( ESlateVisibility::Visible );
+	return true;
+}
+
 bool APingPongGameMode::IsAvialibleGameOverScreen()
 {
 	if ( !GameOverWidgetInstance || !UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
@@ -606,6 +643,14 @@ bool APingPongGameMode::IsAvialiblePauseScreen()
 bool APingPongGameMode::IsAvialibleOptionsScreen()
 {
 	if ( !OptionsWidgetInstance || !UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
+		return false;
+	else
+		return true;
+}
+
+bool APingPongGameMode::IsAvialibleWinScreen()
+{
+	if ( !WinWidgetInstance || !UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
 		return false;
 	else
 		return true;
@@ -664,7 +709,7 @@ void APingPongGameMode::TrySaveGameOnChangedStatus( const TEnumAsByte<GameStatus
 
 bool APingPongGameMode::IsGameStatusUI( const TEnumAsByte<GameStatus>& GameStatusValue )
 {
-	return ( GameStatusValue == GameOver || GameStatusValue == Paused || GameStatusValue == Options );
+	return ( GameStatusValue == GameOver || GameStatusValue == Paused || GameStatusValue == Options || GameStatusValue == Win );
 }
 
 void APingPongGameMode::ChangePawnController( UClass* ControllerType, APawn* Pawn )

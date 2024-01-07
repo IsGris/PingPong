@@ -55,6 +55,8 @@ protected:
 
 	// ~ Variables
 public:
+	UPROPERTY( EditDefaultsOnly, BlueprintReadOnly, Category = "Variables" )
+	int ScoreToWin = 3;
 	/** Default enemy class */
 	UPROPERTY( EditAnywhere, BlueprintReadWrite, Category = Classes )
 	TSubclassOf<class AEnemyBarrier> DefaultEnemyClass;
@@ -210,6 +212,8 @@ protected:
 	bool HidePauseScreen();
 	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Hide" )
 	bool HideOptionsScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Hide" )
+	bool HideWinScreen();
 	// ~ ~ ~ Hide
 	// ~ ~ ~ Show
 protected:
@@ -221,6 +225,8 @@ protected:
 	bool ShowPauseScreen();
 	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Show" )
 	bool ShowOptionsScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Show" )
+	bool ShowWinScreen();
 	// ~ ~ ~ Show
 	// ~ ~ ~ IsAvialible
 protected:
@@ -232,6 +238,8 @@ protected:
 	bool IsAvialiblePauseScreen();
 	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|IsAvialible" )
 	bool IsAvialibleOptionsScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|IsAvialible" )
+	bool IsAvialibleWinScreen();
 	// ~ ~ ~ IsAvialible
 	// ~ ~ ~ Misc
 protected:
@@ -267,6 +275,11 @@ protected:
 	TSubclassOf<class UUserWidget> OptionsWidget;
 	// Instance of options widget
 	TObjectPtr<class UUserWidget> OptionsWidgetInstance;
+	// Widget for Win screen
+	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
+	TSubclassOf<class UUserWidget> WinWidget;
+	// Instance of Win widget
+	TObjectPtr<class UUserWidget> WinWidgetInstance;
 	// ~ ~ Variables
 	// ~ Widgets
 
