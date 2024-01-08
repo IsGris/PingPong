@@ -10,6 +10,12 @@
 
 DECLARE_LOG_CATEGORY_EXTERN( LogPingPongBall, Log, All );
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE( FOnBallScoredGate );
+DECLARE_DYNAMIC_MULTICAST_DELEGATE( FOnBallHitBarrier );
+
+class FOnBallScoredGate;
+class FOnBallHitBarrier;
+
 /**
  * Ball for Ping Pong game
  */
@@ -51,6 +57,15 @@ protected:
 	// ~ Movement
 
 	// ~ Misc
+public:
+	// Broadcasts when the ball was scored into the player's gate
+	UPROPERTY( BlueprintAssignable, Category = "Events" )
+	FOnBallScoredGate OnPlayerGateScored;
+	// Broadcasts when the ball was scored into the enemy's gate
+	UPROPERTY( BlueprintAssignable, Category = "Events" )
+	FOnBallScoredGate OnEnemyGateScored;
+	UPROPERTY( BlueprintAssignable, Category = "Events" )
+	FOnBallHitBarrier OnBarrierHit;
 protected:
 	// Called evey frame
 	virtual void Tick( float DeltaTime ) override;

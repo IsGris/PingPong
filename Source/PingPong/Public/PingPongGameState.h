@@ -11,9 +11,11 @@ UENUM()
 enum GameStatus
 {
 	GameOver       UMETA( DisplayName = "GameOver" ),
-	Paused         UMETA( DisplayName = "Paused" ),
+	Win            UMETA( DisplayName = "Win" ),
 	Playing        UMETA( DisplayName = "Playing" ),
-	Starting       UMETA( DisplayName = "Starting" )
+	Starting       UMETA( DisplayName = "Starting" ),
+	Paused         UMETA( DisplayName = "Paused" ),
+	Options        UMETA( DisplayName = "Options" )
 };
 
 /**

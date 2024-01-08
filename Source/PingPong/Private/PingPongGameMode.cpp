@@ -15,6 +15,13 @@
 #include "BallStart.h"
 #include "EngineUtils.h"
 #include "ScoreScreen.h"
+#include "PingPongGameState.h"
+#include "PingPongGameInstance.h"
+#include "Components/AudioComponent.h"
+#include "Engine/World.h"
+#include "Sound/SoundBase.h"
+#include "Sound/SoundMix.h"
+#include "Sound/SoundClass.h"
 
 DEFINE_LOG_CATEGORY( LogPingPongGameMode );
 
@@ -46,50 +53,53 @@ void APingPongGameMode::BeginPlay()
 	else
 		UE_LOG( LogPingPongGameMode, Warning, TEXT( "BallStart transform not finded cannot reset round" ) );
 
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "All entities spawned" ) );
+
 	// Init variables
 	Player = FindPlayer();
 	Enemy = FindEnemy();
 	Ball = FindBall();
 
-	ChangePawnController( DefaultEnemyControllerClass, Cast<APawn>(Enemy) );
-	ChangePawnController( DefaultBallControllerClass, Cast<APawn>( Ball) );
+	ChangePawnController( DefaultEnemyControllerClass, Cast<APawn>( Enemy ) );
+	ChangePawnController( DefaultBallControllerClass, Cast<APawn>( Ball ) );
 
-	// Init pause widget
-	if ( PauseWidget )
+	if ( Ball )
 	{
-		PauseWidgetInstance = CreateWidget<UUserWidget>( GetWorld(), PauseWidget );
-		if ( PauseWidgetInstance )
-		{
-			PauseWidgetInstance->AddToViewport();
-			PauseWidgetInstance->SetVisibility( ESlateVisibility::Hidden );
-		}
+		Ball->OnBarrierHit.AddDynamic( this, &APingPongGameMode::OnBallHitBarrier );
+		Ball->OnPlayerGateScored.AddDynamic( this, &APingPongGameMode::OnEnemyWinRound );
+		Ball->OnEnemyGateScored.AddDynamic( this, &APingPongGameMode::OnPlayerWinRound );
 	}
-	else
-		UE_LOG( LogPingPongGameMode, Warning, TEXT( "PauseWidget is not defined" ) );
 
-	// Init score screen widget
-	if ( ScoreScreenWidget )
-	{
-		ScoreScreenWidgetInstance = CreateWidget<UScoreScreen>( GetWorld(), ScoreScreenWidget );
-		if ( ScoreScreenWidgetInstance )
-		{
-			ScoreScreenWidgetInstance->AddToViewport();
-		}
-	}
-	else
-		UE_LOG( LogPingPongGameMode, Warning, TEXT( "ScoreScreenWidget is not defined" ) );
+	DisableAllMovements();
 
-	// Init start with start countdown widget
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "All entities configured" ) );
+
+	// Init widgets
+	InitWidgetInstance( ScoreScreenWidget, ScoreScreenWidgetInstance, true );
+	InitWidgetInstance( PauseWidget, PauseWidgetInstance );
+	InitWidgetInstance( GameOverWidget, GameOverWidgetInstance );
+	InitWidgetInstance( OptionsWidget, OptionsWidgetInstance );
+	InitWidgetInstance( WinWidget, WinWidgetInstance );
+	CreateCountdownTimer();
+	if ( APlayerController* PlayerController = Cast<APlayerController>( Player->GetController() ) )
+		PlayerController->SetInputMode( FInputModeGameOnly() );
+
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "All widgets configured" ) );
+
+	// Init settings
+	SetEffectsVolume( GetEffectsVolume() ); // Get default volume and set it
+
+	OnGameStatusChanged.AddDynamic( this, &APingPongGameMode::TrySaveGameOnChangedStatus );
+
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "All settings configured" ) );
+}
+
+void APingPongGameMode::StartOverCountdownTimer()
+{
 	CreateCountdownTimer();
 }
 
-void APingPongGameMode::StartOverCountdownTimer( const bool& NeedToStartGameOnTimerEnd )
-{
-	DeleteTimer();
-	CreateCountdownTimer( NeedToStartGameOnTimerEnd );
-}
-
-void APingPongGameMode::CreateCountdownTimer( const bool& NeedToStartGameOnTimerEnd )
+void APingPongGameMode::CreateCountdownTimer()
 {
 	if ( StartCountdownWidget )
 	{
@@ -97,25 +107,12 @@ void APingPongGameMode::CreateCountdownTimer( const bool& NeedToStartGameOnTimer
 		if ( StartCountdownWidgetInstance )
 		{
 			StartCountdownWidgetInstance->AddToViewport();
-			if ( NeedToStartGameOnTimerEnd )
-			{
-				GetWorldTimerManager().SetTimer( StartCountdownTimer, this, &APingPongGameMode::StartGame, StartCountdownDuration );
-				DisableAllMovements();
-			}
 		}
 		else
-			UE_LOG( LogPingPongGameMode, Warning, TEXT( "Error when tries to create StartCountdownWidgetInstance" ) );
+			StartCountdownWidgetInstance->Construct();
 	}
 	else
 		UE_LOG( LogPingPongGameMode, Warning, TEXT( "StartCountdown widget is not defined" ) );
-}
-
-void APingPongGameMode::DeleteTimer()
-{
-	if ( StartCountdownWidgetInstance )
-		StartCountdownWidgetInstance->Destruct();
-	if ( StartCountdownTimer.IsValid() )
-		StartCountdownTimer.Invalidate();
 }
 
 APlayerBarrier* APingPongGameMode::GetPlayer()
@@ -133,11 +130,44 @@ ABall* APingPongGameMode::GetBall()
 	return Ball;
 }
 
+void APingPongGameMode::HandleGoBackButton()
+{
+	APingPongGameState* CurrentGameState = Cast<APingPongGameState>( GameState ); // Get game state
+	if ( !CurrentGameState )
+		return;
+
+	switch ( CurrentGameState->CurrentGameStatus )
+	{
+		case Starting:
+		case Playing:
+			ChangeGameStatus( GameStatus::Paused );
+			break;
+		case Paused:
+			ChangeGameStatus( ( IsGameStarted ? GameStatus::Playing : GameStatus::Starting ) );
+			break;
+		case Options:
+			ChangeGameStatus( GameStatus::Paused );
+			break;
+	}
+
+	UE_LOG( LogPingPongGameMode, Verbose, TEXT( "Go back button successfully handled" ) );
+}
+
+void APingPongGameMode::SaveGame()
+{
+	if ( auto PingPongGameInstance = Cast<UPingPongGameInstance>( UGameplayStatics::GetGameInstance( GetWorld() ) ) )
+	{
+		PingPongGameInstance->SaveGame();
+		UE_LOG( LogPingPongGameMode, Log, TEXT( "Game successfully saved" ) );
+	}
+}
+
 void APingPongGameMode::EnableAllMovements()
 {
 	Ball->CanMove = true;
 	Player->SetAvialibleMoveDirection( MoveDirection::UpAndDown );
 	Enemy->SetAvialibleMoveDirection( MoveDirection::UpAndDown );
+	UE_LOG( LogPingPongGameMode, VeryVerbose, TEXT( "Movement enabled" ) );
 }
 
 void APingPongGameMode::DisableAllMovements()
@@ -145,6 +175,7 @@ void APingPongGameMode::DisableAllMovements()
 	Ball->CanMove = false;
 	Player->SetAvialibleMoveDirection( MoveDirection::NoMovement );
 	Enemy->SetAvialibleMoveDirection( MoveDirection::NoMovement );
+	UE_LOG( LogPingPongGameMode, VeryVerbose, TEXT( "Movement disabled" ) );
 }
 
 void APingPongGameMode::StartGame()
@@ -152,46 +183,133 @@ void APingPongGameMode::StartGame()
 	// Change game status and unpause
 	APingPongGameState* CurrentGameState = Cast<APingPongGameState>( GameState );
 	CurrentGameState->CurrentGameStatus = Playing;
+	IsGameStarted = true;
 	EnableAllMovements();
-	DeleteTimer();
+	HideStartingCountdown();
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "Game started" ) );
 }
 
-void APingPongGameMode::SwapPause()
+bool APingPongGameMode::ChangeGameStatus( const TEnumAsByte<GameStatus> NewGameStatus )
 {
 	APingPongGameState* CurrentGameState = Cast<APingPongGameState>( GameState ); // Get game state
 	if ( !CurrentGameState )
-		return;
+		return false;
 
 	TEnumAsByte<GameStatus>& CurrentGameStatus = CurrentGameState->CurrentGameStatus;
 
-	if ( CurrentGameStatus == GameStatus::Playing ) // Check if playing -> set to pause 
+	if ( NewGameStatus == CurrentGameStatus )
+		return true;
+
+	if ( IsGameStatusUI( NewGameStatus ) )
 	{
-		PauseWidgetInstance->SetVisibility( ESlateVisibility::Visible );
-		CurrentGameStatus = GameStatus::Paused;
-		UGameplayStatics::SetGamePaused( GetWorld(), true );
+		if ( APlayerController* PlayerControllerRef = UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
+		{
+			PlayerControllerRef->SetShowMouseCursor( true );
+			PlayerControllerRef->SetInputMode( FInputModeUIOnly() );
+			UGameplayStatics::SetGamePaused( GetWorld(), true );
+		}
+		else
+			return false;
 	}
-	else if ( CurrentGameStatus == GameStatus::Paused ) // Check if paused -> set to playing
+	else
 	{
-		PauseWidgetInstance->SetVisibility( ESlateVisibility::Hidden );
-		CurrentGameStatus = GameStatus::Playing;
-		UGameplayStatics::SetGamePaused( GetWorld(), false );
+		if ( APlayerController* PlayerControllerRef = UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
+		{
+			PlayerControllerRef->SetShowMouseCursor( false );
+			PlayerControllerRef->SetInputMode( FInputModeGameOnly() );
+			UGameplayStatics::SetGamePaused( GetWorld(), false );
+		}
+		else
+			return false;
 	}
+
+	switch ( NewGameStatus ) // Change current game status
+	{
+	case GameOver:
+		if ( CurrentGameStatus != Playing || !IsAvialibleGameOverScreen() )
+			return false;
+		HideCurrentGameStatusScreen();
+		ShowGameOverScreen();
+		PlayEffectSound( PingPongSound::Lose );
+		CurrentGameStatus = GameOver;
+		break;
+	case Win:
+		if ( CurrentGameStatus != Playing )
+			return false;
+		HideCurrentGameStatusScreen();
+		ShowWinScreen();
+		PlayEffectSound( PingPongSound::Win );
+		CurrentGameStatus = Win;
+		break;
+	case Playing:
+		if ( !( CurrentGameStatus == Starting || CurrentGameStatus == Paused || CurrentGameStatus == Options ) )
+			return false;
+		HideCurrentGameStatusScreen();
+		CurrentGameStatus = Playing;
+		break;
+	case Starting:
+		if ( !( CurrentGameStatus == Paused || CurrentGameStatus == Options ) || !IsAvialibleStartingCountdown() )
+			return false;
+		HideCurrentGameStatusScreen();
+		ShowStartingCountdown();
+		CurrentGameStatus = Starting;
+		break;
+	case Paused:
+		if ( !( CurrentGameStatus == Playing || CurrentGameStatus == Starting || CurrentGameStatus == Options ) || !IsAvialiblePauseScreen() )
+			return false;
+		HideCurrentGameStatusScreen();
+		ShowPauseScreen();
+		CurrentGameStatus = Paused;
+		break;
+	case Options:
+		if ( CurrentGameStatus != Paused || !IsAvialibleOptionsScreen() )
+			return false;
+		HideCurrentGameStatusScreen();
+		ShowOptionsScreen();
+		CurrentGameStatus = Options;
+		break;
+	default: 
+		{
+			auto NewGameStatusAsString = UEnum::GetValueAsString<GameStatus>( NewGameStatus );
+			UE_LOG( LogPingPongGameMode, Warning, 
+					TEXT( "Cannot change game status to %s in ChangeGameStatus because the logic of the function does not take this game status into account" ),
+					*NewGameStatusAsString );
+			return false;
+		}
+		break;
+	}
+
+	OnGameStatusChanged.Broadcast( NewGameStatus, CurrentGameStatus );
+
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "Game status changed" ) );
+	
+	return true;
 }
 
 void APingPongGameMode::RestartRound()
 {
-	StartOverCountdownTimer( true );
+	IsGameStarted = false;
+
+	Cast<APingPongGameState>( GameState )->CurrentGameStatus = Starting;
+
+	StartOverCountdownTimer();
 	
 	// Set all actor locations to start
 	TOptional<FTransform> TempTransform;
 	TempTransform = FindPlayerStartTransform();
 	if ( TempTransform.IsSet() && Player )
+	{
 		Player->SetActorLocationAndRotation( TempTransform.GetValue().GetLocation(), TempTransform.GetValue().GetRotation() );
+		Player->SetAvialibleMoveDirection( MoveDirection::NoMovement );
+	}
 	else
 		UE_LOG( LogPingPongGameMode, Warning, TEXT( "Failed to reset player position in restart round" ) );
 	TempTransform = FindEnemyStartTransform();
 	if ( TempTransform.IsSet() && Enemy )
+	{
 		Enemy->SetActorLocationAndRotation( TempTransform.GetValue().GetLocation(), TempTransform.GetValue().GetRotation() );
+		Enemy->SetAvialibleMoveDirection( MoveDirection::NoMovement );
+	}
 	else
 		UE_LOG( LogPingPongGameMode, Warning, TEXT( "Failed to reset enemy position in restart round" ) );
 	TempTransform = FindBallStartTransform();
@@ -202,7 +320,18 @@ void APingPongGameMode::RestartRound()
 
 	if ( Ball )
 		Ball->ResetDirection();
-	
+
+	DisableAllMovements();
+
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "Round restarted" ) );
+
+}
+
+void APingPongGameMode::RestartGame()
+{
+	FString CurrentLevelName = GetWorld()->GetMapName();
+	CurrentLevelName.RemoveFromStart( GetWorld()->StreamingLevelsPrefix );
+	UGameplayStatics::OpenLevel( GetWorld(), FName( CurrentLevelName ) ); // Reopen current level and then all starts from beginning
 }
 
 void APingPongGameMode::AddPlayerScore( const int& ScoreToAdd )
@@ -210,7 +339,11 @@ void APingPongGameMode::AddPlayerScore( const int& ScoreToAdd )
 	Player->AddScore( ScoreToAdd );
 	if ( ScoreScreenWidgetInstance )
 		ScoreScreenWidgetInstance->ChangePlayerScore( Player->GetScore() );
-	RestartRound();
+	if ( Player->GetScore() >= ScoreToWin )
+		ChangeGameStatus( Win );
+	else
+		RestartRound();
+	UE_LOG( LogPingPongGameMode, VeryVerbose, TEXT( "Added player score" ) );
 }
 
 void APingPongGameMode::AddEnemyScore( const int& ScoreToAdd )
@@ -218,7 +351,11 @@ void APingPongGameMode::AddEnemyScore( const int& ScoreToAdd )
 	Enemy->AddScore( ScoreToAdd );
 	if ( ScoreScreenWidgetInstance )
 		ScoreScreenWidgetInstance->ChangeEnemyScore( Enemy->GetScore() );
-	RestartRound();
+	if ( Enemy->GetScore() >= ScoreToWin )
+		ChangeGameStatus( GameOver );
+	else
+		RestartRound();
+	UE_LOG( LogPingPongGameMode, VeryVerbose, TEXT( "Added enemy score" ) );
 }
 
 template<typename StartType>
@@ -313,6 +450,260 @@ AActor* APingPongGameMode::FindActorWithType( UClass* ActorType ) const
 	return UGameplayStatics::GetActorOfClass( GetWorld(), ActorType );
 }
 
+void APingPongGameMode::InitAudio()
+{
+	UGameplayStatics::PushSoundMixModifier( GetWorld(), EffectsSoundMixClass.Get() );
+	UE_LOG( LogPingPongGameMode, Log, TEXT( "Audio inited" ) );
+}
+
+void APingPongGameMode::SetEffectsVolume( const float& NewVolume, bool SaveSettings )
+{
+	auto PingPongGameInstance = Cast<UPingPongGameInstance>( UGameplayStatics::GetGameInstance( GetWorld() ) );
+	auto WorldContext = GetWorld();
+	if ( PingPongGameInstance &&
+		 WorldContext &&
+		 !EffectsSoundMixClass.IsNull() &&
+		 !EffectsSoundClass.IsNull()
+		)
+	{
+		PingPongGameInstance->SetEffectsVolume( NewVolume, SaveSettings );
+		EffectsSoundClass->Properties.Volume = NewVolume;
+		UE_LOG( LogPingPongGameMode, VeryVerbose, TEXT( "Effects volume changed" ) );
+	}
+}
+
+float APingPongGameMode::GetEffectsVolume() const
+{
+	if ( auto PingPongGameInstance = Cast<UPingPongGameInstance>( UGameplayStatics::GetGameInstance( GetWorld() ) ) )
+		return PingPongGameInstance->GetEffectsVolume();
+	else
+		return 1.0f;
+}
+
+void APingPongGameMode::PlayEffectSound( const TEnumAsByte<PingPongSound>& SoundToPlay )
+{
+	switch ( SoundToPlay.GetValue() )
+	{
+		case PingPongSound::BallBounce:
+			UGameplayStatics::PlaySound2D( this, BallBounceSound );
+			break;
+		case PingPongSound::EnemyScored:
+			UGameplayStatics::PlaySound2D( this, EnemyScoredSound );
+			break;
+		case PingPongSound::PlayerScored:
+			UGameplayStatics::PlaySound2D( this, PlayerScoredSound );
+			break;
+		case PingPongSound::Lose:
+			UGameplayStatics::PlaySound2D( this, LoseSound );
+			break;
+		case PingPongSound::Win:
+			UGameplayStatics::PlaySound2D( this, WinSound );
+			break;
+	}
+}
+
+void APingPongGameMode::HideCurrentGameStatusScreen()
+{
+	APingPongGameState* CurrentGameState = Cast<APingPongGameState>( GameState ); // Get game state
+	if ( !CurrentGameState )
+		return;
+
+	switch ( CurrentGameState->CurrentGameStatus )
+	{
+		case GameOver:
+			HideGameOverScreen();
+			break;
+		case Win:
+			HideWinScreen();
+			break;
+		case Starting:
+			HideStartingCountdown();
+			break;
+		case Paused:
+			HidePauseScreen();
+			break;
+		case Options:
+			HideOptionsScreen();
+			break;
+	}
+}
+
+bool APingPongGameMode::HideGameOverScreen()
+{
+	if ( !GameOverWidgetInstance )
+		return false;
+	GameOverWidgetInstance->SetVisibility( ESlateVisibility::Hidden );
+	return true;
+}
+
+bool APingPongGameMode::HideStartingCountdown()
+{
+	if ( !StartCountdownWidgetInstance )
+		return false;
+	StartCountdownWidgetInstance->SetVisibility( ESlateVisibility::Hidden );
+	return true;
+}
+
+bool APingPongGameMode::HidePauseScreen()
+{
+	if ( !PauseWidgetInstance )
+		return false;
+	PauseWidgetInstance->SetVisibility( ESlateVisibility::Hidden );
+	return true;
+}
+
+bool APingPongGameMode::HideOptionsScreen()
+{
+	if ( !OptionsWidgetInstance )
+		return false;
+	OptionsWidgetInstance->SetVisibility( ESlateVisibility::Hidden );
+	return true;
+}
+
+bool APingPongGameMode::HideWinScreen()
+{
+	if ( !WinWidgetInstance )
+		return false;
+	WinWidgetInstance->SetVisibility( ESlateVisibility::Hidden );
+	return true;
+}
+
+bool APingPongGameMode::ShowGameOverScreen()
+{
+	if ( !GameOverWidgetInstance )
+		return false;
+	GameOverWidgetInstance->SetVisibility( ESlateVisibility::Visible );
+	return true;
+}
+
+bool APingPongGameMode::ShowStartingCountdown()
+{
+	if ( !StartCountdownWidgetInstance )
+		return false;
+	StartCountdownWidgetInstance->SetVisibility( ESlateVisibility::Visible );
+	return true;
+}
+
+bool APingPongGameMode::ShowPauseScreen()
+{
+	if ( !PauseWidgetInstance )
+		return false;
+	PauseWidgetInstance->SetVisibility( ESlateVisibility::Visible );
+	return true;
+}
+
+bool APingPongGameMode::ShowOptionsScreen()
+{
+	if ( !OptionsWidgetInstance )
+		return false;
+	OptionsWidgetInstance->SetVisibility( ESlateVisibility::Visible );
+	return true;
+}
+
+bool APingPongGameMode::ShowWinScreen()
+{
+	if ( !WinWidgetInstance )
+		return false;
+	WinWidgetInstance->SetVisibility( ESlateVisibility::Visible );
+	return true;
+}
+
+bool APingPongGameMode::IsAvialibleGameOverScreen()
+{
+	if ( !GameOverWidgetInstance || !UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
+		return false;
+	else
+		return true;
+}
+
+bool APingPongGameMode::IsAvialibleStartingCountdown()
+{
+	if ( !StartCountdownWidgetInstance )
+		return false;
+	else
+		return true;
+}
+
+bool APingPongGameMode::IsAvialiblePauseScreen()
+{
+	if ( !PauseWidgetInstance || !UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
+		return false;
+	else
+		return true;
+}
+
+bool APingPongGameMode::IsAvialibleOptionsScreen()
+{
+	if ( !OptionsWidgetInstance || !UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
+		return false;
+	else
+		return true;
+}
+
+bool APingPongGameMode::IsAvialibleWinScreen()
+{
+	if ( !WinWidgetInstance || !UGameplayStatics::GetPlayerController( GetWorld(), 0 ) )
+		return false;
+	else
+		return true;
+}
+
+template<typename WidgetType UE_REQUIRES( TIsDerivedFrom<WidgetType, class UUserWidget>::Value )>
+bool APingPongGameMode::InitWidgetInstance( const TSubclassOf<WidgetType> Widget, TObjectPtr<WidgetType>& WidgetInstance, const bool& IsVisible )
+{
+	if ( Widget )
+	{
+		WidgetInstance = CreateWidget<WidgetType>( GetWorld(), Widget );
+		if ( WidgetInstance )
+		{
+			WidgetInstance->AddToViewport();
+			if ( !IsVisible )
+				WidgetInstance->SetVisibility( ESlateVisibility::Hidden );
+			UE_LOG( LogPingPongGameMode, Verbose, TEXT( "Widget instance %s successfully inited" ), Widget.Get()->GetClass()->GetFName() );
+			return true;
+		}
+		else
+		{
+			UE_LOG( LogPingPongGameMode, Warning, TEXT( "Cannot create widget instance of widget %s given in function InitWidgetInstance" ), 
+					*( Widget->GetClass()->GetFName().ToString() ) );
+			return false;
+		}
+	}
+	else
+	{
+		UE_LOG( LogPingPongGameMode, Warning, TEXT( "Widget given in function InitWidgetInstance is not defined" ) );
+		return false;
+	}
+}
+
+void APingPongGameMode::OnBallHitBarrier()
+{
+	PlayEffectSound( PingPongSound::BallBounce );
+}
+
+void APingPongGameMode::OnPlayerWinRound()
+{
+	AddPlayerScore();
+	PlayEffectSound( PingPongSound::PlayerScored );
+}
+
+void APingPongGameMode::OnEnemyWinRound()
+{
+	AddEnemyScore();
+	PlayEffectSound( PingPongSound::EnemyScored );
+}
+
+void APingPongGameMode::TrySaveGameOnChangedStatus( const TEnumAsByte<GameStatus>& NewGameStatus, const TEnumAsByte<GameStatus>& OldGameStatus )
+{
+	if ( NewGameStatus == Paused && OldGameStatus == Options )
+		SaveGame();
+}
+
+bool APingPongGameMode::IsGameStatusUI( const TEnumAsByte<GameStatus>& GameStatusValue )
+{
+	return ( GameStatusValue == GameOver || GameStatusValue == Paused || GameStatusValue == Options || GameStatusValue == Win );
+}
+
 void APingPongGameMode::ChangePawnController( UClass* ControllerType, APawn* Pawn )
 {
 	if ( Pawn == nullptr || ControllerType == nullptr )
@@ -329,6 +720,7 @@ void APingPongGameMode::ChangePawnController( UClass* ControllerType, APawn* Paw
 	NewController->Possess( Pawn );
 	Pawn->Controller = NewController;
 
+	UE_LOG( LogPingPongGameMode, Verbose, TEXT( "Successfully changed controller to %s for pawn %s" ), ControllerType->GetFName(), Pawn->GetFName() );
 }
 
 template<typename ControllerType UE_REQUIRES( TIsDerivedFrom<ControllerType, AController>::Value )>

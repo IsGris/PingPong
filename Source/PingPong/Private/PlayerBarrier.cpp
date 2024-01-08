@@ -27,6 +27,8 @@ void APlayerBarrier::BeginPlay()
                 UE_LOG( LogPlayerBarrier, Warning, TEXT( "PlayerMappingContext is not defined" ) );
         }
     }
+
+    UE_LOG( LogPlayerBarrier, Log, TEXT( "PlayerBarrier inited" ) );
 }
 
 void APlayerBarrier::SetupPlayerInputComponent( UInputComponent* PlayerInputComponent )
@@ -46,11 +48,13 @@ void APlayerBarrier::SetupPlayerInputComponent( UInputComponent* PlayerInputComp
 
         if ( PauseAction )
         {
-            PlayerEnhancedInputComponent->BindAction( PauseAction, ETriggerEvent::Triggered, Cast<APingPongGameMode>( UGameplayStatics::GetGameMode( GetWorld() ) ), &APingPongGameMode::SwapPause );
+            PlayerEnhancedInputComponent->BindAction( PauseAction, ETriggerEvent::Triggered, Cast<APingPongGameMode>( UGameplayStatics::GetGameMode( GetWorld() ) ), &APingPongGameMode::HandleGoBackButton );
         }
         else
             UE_LOG( LogPlayerBarrier, Warning, TEXT( "PauseAction is not defined" ) );
     }
+
+    UE_LOG( LogPlayerBarrier, Log, TEXT( "Input component configured" ) );
 }
 
 void APlayerBarrier::Move( const FInputActionValue& ActionValue )

@@ -31,6 +31,7 @@ AMovingBarrier::AMovingBarrier() : Super()
 
 	bIsSpatiallyLoaded = false;
 #endif // WITH_EDITORONLY_DATA
+	RootComponent = CollisionBox;
 }
 
 void AMovingBarrier::SetAvialibleMoveDirection( const MoveDirection& Value )

@@ -5,8 +5,24 @@
 #include "CoreMinimal.h"
 
 #include "GameFramework/GameModeBase.h"
+#include "PingPongGameState.h"
 
 #include "PingPongGameMode.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams( FOnGameStatusChanged, const TEnumAsByte<GameStatus>&, NewGameStatus, const TEnumAsByte<GameStatus>&, OldGameStatus );
+
+class FOnGameStatusChanged;
+
+// Describes all sounds in game
+UENUM()
+enum class PingPongSound
+{
+	BallBounce       UMETA( DisplayName = "BallBounce" ),
+	EnemyScored        UMETA( DisplayName = "EnemyScored" ),
+	PlayerScored       UMETA( DisplayName = "PlayerScored" ),
+	Lose         UMETA( DisplayName = "Lose" ),
+	Win        UMETA( DisplayName = "Win" )
+};
 
 DECLARE_LOG_CATEGORY_EXTERN( LogPingPongGameMode, Log, All );
 
@@ -30,20 +46,17 @@ private:
 public:
 	// Start Countdown timer from start
 	UFUNCTION( BlueprintCallable, Category = "Countdown Timer" )
-	void StartOverCountdownTimer(const bool& NeedToStartGameOnTimerEnd = true);
+	void StartOverCountdownTimer();
 protected:
 	// Create timer in viewport
 	UFUNCTION( BlueprintCallable, Category = "Countdown Timer" )
-	void CreateCountdownTimer( const bool& NeedToStartGameOnTimerEnd = true );
-	// Delete timer from viewport if not deleted yet
-	UFUNCTION( BlueprintCallable, Category = "Countdown Timer" )
-	void DeleteTimer();
-	// Timer used for countdown and start game
-	struct FTimerHandle StartCountdownTimer;
+	void CreateCountdownTimer();
 	// ~ Countdown Timer
 
 	// ~ Variables
 public:
+	UPROPERTY( EditDefaultsOnly, BlueprintReadOnly, Category = "Variables" )
+	int ScoreToWin = 3;
 	/** Default enemy class */
 	UPROPERTY( EditAnywhere, BlueprintReadWrite, Category = Classes )
 	TSubclassOf<class AEnemyBarrier> DefaultEnemyClass;
@@ -69,13 +82,16 @@ protected:
 	TObjectPtr<class APlayerBarrier> Player;
 	TObjectPtr<class AEnemyBarrier> Enemy;
 	TObjectPtr<class ABall> Ball;
-	// How many seconds wait before game starts
-	UPROPERTY( EditDefaultsOnly, Category = "Start" )
-	float StartCountdownDuration = 3;
 	// ~ Variables
 
 	// ~ Status
+protected:
+	UPROPERTY( BlueprintReadwrite, Category = "Status" )
+	bool IsGameStarted = false;
 public:
+	// Update game save file
+	UFUNCTION( BlueprintCallable, Category = "Status" )
+	void SaveGame();
 	// Enable all movements for player, ball and enemy
 	UFUNCTION( BlueprintCallable, Category = "Status" )
 	void EnableAllMovements();
@@ -85,12 +101,18 @@ public:
 	// Start ping pong game
 	UFUNCTION( BlueprintCallable, Category = "Status" )
 	void StartGame();
-	// Swaps current pause state if playing or paused
+	// Handle if player press go back(for example, returning to the game from a pause)
 	UFUNCTION( BlueprintCallable, Category = "Status" )
-	void SwapPause();
+	void HandleGoBackButton();
+	// Sets new Game status and handle it
+	UFUNCTION( BlueprintCallable, Category = "Status" )
+	bool ChangeGameStatus( const TEnumAsByte<enum GameStatus> NewGameStatus );
 	// Restarts current round
 	UFUNCTION( BlueprintCallable, Category = "Status" )
 	void RestartRound();
+	// Restarts current game
+	UFUNCTION( BlueprintCallable, Category = "Status" )
+	void RestartGame();
 	// Add score to player
 	UFUNCTION( BlueprintCallable, Category = "Status" )
 	void AddPlayerScore( const int& ScoreToAdd = 1 );
@@ -138,26 +160,149 @@ public:
 	class AActor* FindActorWithType( UClass* ActorType ) const;
 	// ~ Find functions
 
+	// ~ Audio
+	// ~ ~ Functions
+public:
+	// Init all audio systems
+	void InitAudio();
+	// Change current effects volume
+	UFUNCTION( BlueprintCallable, Category = "Audio|Volume" )
+	void SetEffectsVolume( const float& NewVolume, bool SaveSettings = false );
+	// Get current effects volume
+	UFUNCTION( BlueprintCallable, Category = "Audio|Volume" )
+	float GetEffectsVolume() const;
+	// Play certain effect sound
+	UFUNCTION( BlueprintCallable, Category = "Audio|Effects" )
+	void PlayEffectSound( const TEnumAsByte<PingPongSound>& SoundToPlay );
+	// ~ ~ Functions
+	// ~ ~ Variables
+protected:
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	TSoftObjectPtr<class USoundClass> EffectsSoundClass;
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	TSoftObjectPtr<class USoundMix> EffectsSoundMixClass;
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	class USoundBase* BallBounceSound;
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	class USoundBase* EnemyScoredSound;
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	class USoundBase* PlayerScoredSound;
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	class USoundBase* LoseSound;
+	UPROPERTY( EditDefaultsOnly, Category = "Audio|Sound" )
+	class USoundBase* WinSound;
+	// ~ ~ Variables
+	// ~ Audio
+
 	// ~ Widgets
+	// ~ ~ Functions
+	// ~ ~ ~ Hide
+protected:
+	// Get current game status and hide all widget from this game status
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Hide" )
+	void HideCurrentGameStatusScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Hide" )
+	bool HideGameOverScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Hide" )
+	bool HideStartingCountdown();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Hide" )
+	bool HidePauseScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Hide" )
+	bool HideOptionsScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Hide" )
+	bool HideWinScreen();
+	// ~ ~ ~ Hide
+	// ~ ~ ~ Show
+protected:
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Show" )
+	bool ShowGameOverScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Show" )
+	bool ShowStartingCountdown();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Show" )
+	bool ShowPauseScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Show" )
+	bool ShowOptionsScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|Show" )
+	bool ShowWinScreen();
+	// ~ ~ ~ Show
+	// ~ ~ ~ IsAvialible
+protected:
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|IsAvialible" )
+	bool IsAvialibleGameOverScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|IsAvialible" )
+	bool IsAvialibleStartingCountdown();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|IsAvialible" )
+	bool IsAvialiblePauseScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|IsAvialible" )
+	bool IsAvialibleOptionsScreen();
+	UFUNCTION( BlueprintCallable, Category = "Widgets|Status|IsAvialible" )
+	bool IsAvialibleWinScreen();
+	// ~ ~ ~ IsAvialible
+	// ~ ~ ~ Misc
+protected:
+	// Init widget on screen and make it hidden
+	template<typename WidgetType UE_REQUIRES( TIsDerivedFrom<WidgetType, class UUserWidget>::Value )>
+	bool InitWidgetInstance( const TSubclassOf<WidgetType> Widget, TObjectPtr<WidgetType>& WidgetInstance, const bool& IsVisible = false );
+	// ~ ~ ~ Misc
+	// ~ ~ Functions
+	// ~ ~ Variables
 protected:
 	// Widget that implements score on screen
 	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
 	TSubclassOf<class UScoreScreen> ScoreScreenWidget;
 	// Instance of score screen widget
-	class UScoreScreen* ScoreScreenWidgetInstance;
+	TObjectPtr<class UScoreScreen> ScoreScreenWidgetInstance;
 	// Widget for pause menu
 	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
 	TSubclassOf<UUserWidget> PauseWidget;
 	// Instance of pause menu widget
-	class UUserWidget* PauseWidgetInstance;
+	TObjectPtr<class UUserWidget> PauseWidgetInstance;
 	// Widget for start countdown
 	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
 	TSubclassOf<class UUserWidget> StartCountdownWidget;
 	// Instance of countdown widget
 	TObjectPtr<class UUserWidget> StartCountdownWidgetInstance;
+	// Widget for game over screen
+	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
+	TSubclassOf<class UUserWidget> GameOverWidget;
+	// Instance of game over screen widget
+	TObjectPtr<class UUserWidget> GameOverWidgetInstance;
+	// Widget for options screen
+	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
+	TSubclassOf<class UUserWidget> OptionsWidget;
+	// Instance of options widget
+	TObjectPtr<class UUserWidget> OptionsWidgetInstance;
+	// Widget for Win screen
+	UPROPERTY( EditDefaultsOnly, Category = "Widgets" )
+	TSubclassOf<class UUserWidget> WinWidget;
+	// Instance of Win widget
+	TObjectPtr<class UUserWidget> WinWidgetInstance;
+	// ~ ~ Variables
 	// ~ Widgets
+
+	// ~ Delegates
+	// ~ ~ Functions
+protected:
+	UFUNCTION()
+	void OnBallHitBarrier();
+	UFUNCTION()
+	void OnPlayerWinRound();
+	UFUNCTION()
+	void OnEnemyWinRound();
+	UFUNCTION()
+	void TrySaveGameOnChangedStatus( const TEnumAsByte<GameStatus>& NewGameStatus, const TEnumAsByte<GameStatus>& OldGameStatus );
+	// ~ ~ Functions
+	// ~ ~ Events
+	UPROPERTY( BlueprintAssignable, Category = "Events" )
+	FOnGameStatusChanged OnGameStatusChanged;
+	// ~ ~ Events
+	// ~ Delegates
 	
+
 	// ~ Miscellaneous
+public:
+	UFUNCTION( BlueprintPure, Category = "Miscellaneous" )
+	static bool IsGameStatusUI( const TEnumAsByte<GameStatus>& GameStatusValue );
 	// Changes controller for pawn
 	UFUNCTION( BlueprintCallable, Category = "Miscellaneous" )
 	void ChangePawnController( UClass* ControllerType, APawn* Pawn );
