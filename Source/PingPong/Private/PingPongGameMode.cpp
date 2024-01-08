@@ -148,17 +148,9 @@ void APingPongGameMode::HandleGoBackButton()
 		case Options:
 			ChangeGameStatus( GameStatus::Paused );
 			break;
-		case GameOver:
-			OpenMainMenu();
-			break;
 	}
 
 	UE_LOG( LogPingPongGameMode, Verbose, TEXT( "Go back button successfully handled" ) );
-}
-
-void APingPongGameMode::OpenMainMenu()
-{
-	UGameplayStatics::OpenLevel( GetWorld(), FName(*MainMenuLevel.GetAssetName()));
 }
 
 void APingPongGameMode::SaveGame()

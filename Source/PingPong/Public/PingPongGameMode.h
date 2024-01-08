@@ -104,9 +104,6 @@ public:
 	// Handle if player press go back(for example, returning to the game from a pause)
 	UFUNCTION( BlueprintCallable, Category = "Status" )
 	void HandleGoBackButton();
-	// Open main menu
-	UFUNCTION( BlueprintCallable, Category = "Status" )
-	void OpenMainMenu();
 	// Sets new Game status and handle it
 	UFUNCTION( BlueprintCallable, Category = "Status" )
 	bool ChangeGameStatus( const TEnumAsByte<enum GameStatus> NewGameStatus );
@@ -303,10 +300,6 @@ protected:
 	
 
 	// ~ Miscellaneous
-protected:
-	// Pointer to main menu level
-	UPROPERTY( EditDefaultsOnly, Category = "Levels" )
-	TSoftObjectPtr<class UWorld> MainMenuLevel;
 public:
 	UFUNCTION( BlueprintPure, Category = "Miscellaneous" )
 	static bool IsGameStatusUI( const TEnumAsByte<GameStatus>& GameStatusValue );
